@@ -2,49 +2,116 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <title>3D Minecraft Clone - Fly & Collision</title>
+  <title>3D Minecraft Clone - Drag & Drop Inventory</title>
   <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; user-select: none; }
+    
     #crosshair {
       position: absolute;
       top: 50%; left: 50%;
       width: 10px; height: 10px;
       margin-top: -5px; margin-left: -5px;
       color: white; font-size: 20px;
-      user-select: none; pointer-events: none;
-      z-index: 10;
+      pointer-events: none; z-index: 10;
     }
+    
     #instructions {
       position: absolute;
       top: 10px; left: 10px;
-      color: white; background: rgba(0,0,0,0.6);
-      padding: 10px; border-radius: 5px;
-      z-index: 10;
+      color: white; background: rgba(0,0,0,0.7);
+      padding: 10px; border-radius: 5px; z-index: 10;
+      font-size: 13px; line-height: 1.5;
     }
-    #inventory {
+
+    /* Hotbar Style */
+    #hotbar-container {
       position: absolute;
-      bottom: 20px; left: 50%;
+      bottom: 15px; left: 50%;
       transform: translateX(-50%);
-      display: flex; gap: 8px;
-      background: rgba(0,0,0,0.6);
-      padding: 8px; border-radius: 8px;
-      border: 2px solid #555;
-      z-index: 10;
+      display: flex; gap: 6px; align-items: center;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 6px; border-radius: 8px;
+      border: 2px solid #555; z-index: 10;
     }
+    
     .slot {
-      width: 40px; height: 40px;
-      border: 3px solid #777;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px;
+      border: 2px solid #777; border-radius: 4px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
       color: white; font-weight: bold;
       text-shadow: 1px 1px 2px black;
-      user-select: none;
+      box-sizing: border-box; font-size: 12px;
+      position: relative; transition: border-color 0.15s;
     }
+    
     .slot.active {
       border-color: #ffffff;
       box-shadow: 0 0 10px #ffffff;
     }
+
+    .slot.drag-over {
+      border-color: #00ff00 !important;
+      background-color: rgba(0, 255, 0, 0.2) !important;
+    }
+
+    #more-btn {
+      width: 44px; height: 44px;
+      background: #444; border: 2px solid #888;
+      border-radius: 4px; color: #fff;
+      font-size: 22px; font-weight: bold;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+    }
+    #more-btn:hover { background: #666; }
+
+    /* Full Inventory Modal */
+    #full-inventory {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px; background: rgba(20, 20, 20, 0.95);
+      border: 3px solid #888; border-radius: 10px;
+      padding: 15px; display: none;
+      flex-direction: column; gap: 10px;
+      z-index: 20; color: white;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+
+    #full-inventory h3 { margin: 0 0 5px 0; text-align: center; }
+    #full-inventory p { margin: 0 0 10px 0; text-align: center; font-size: 12px; color: #aaa; }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px; max-height: 300px;
+      overflow-y: auto; padding: 5px;
+    }
+
+    .item-card {
+      background: #333; border: 2px solid #555;
+      border-radius: 6px; padding: 8px;
+      display: flex; flex-direction: column;
+      align-items: center; cursor: grab;
+      transition: 0.2s;
+    }
+    .item-card:active { cursor: grabbing; }
+    .item-card:hover { border-color: #fff; background: #555; }
+    
+    .item-color {
+      width: 32px; height: 32px;
+      border-radius: 4px; border: 1px solid #000;
+      margin-bottom: 4px; pointer-events: none;
+    }
+    .item-name { font-size: 11px; text-align: center; pointer-events: none; }
+
+    #close-inv-btn {
+      align-self: center; padding: 6px 25px;
+      background: #aa3333; border: none;
+      color: white; border-radius: 5px;
+      cursor: pointer; font-weight: bold; margin-top: 5px;
+    }
+    #close-inv-btn:hover { background: #ff4444; }
   </style>
 </head>
 <body>
@@ -53,263 +120,422 @@
   
   <div id="instructions">
     <b>របៀបបញ្ជា៖</b><br>
-    - ចុចលើអេក្រង់ដើម្បីចាប់ផ្តើម (Lock Pointer)<br>
-    - W, A, S, D : ដើរ<br>
-    - <b>ចុច Space 2 ដងជាប់ៗគ្នា</b> : បើក/បិទ របៀបហោះ (Fly Mode)<br>
-    - <b>Space</b> (ពេលហោះ) : ហោះឡើង | <b>Shift</b> (ពេលហោះ) : ហោះចុះ<br>
-    - <b>Shift ឆ្វេង</b> (ពេលដើរ) : បន្ទាបខ្លួន (Crouch)<br>
-    - <b>1 ដល់ 5</b> : ជ្រើសរើសពណ៌ Block (Inventory)<br>
-    - ចុចកណ្ដុរឆ្វេង : បំផ្លាញ Block | ចុចកណ្ដុរស្តាំ : ដាក់ Block
+    - ចុចលើអេក្រង់ដើម្បីបញ្ជាមើលជុំវិញ<br>
+    - <b>W, A, S, D</b> : ដើរ | <b>Space</b> : លោត<br>
+    - <b>1 ដល់ 0</b> : ជ្រើសរើស Hotbar Slot<br>
+    - <b>Tab</b> ឬ <b>E</b> ឬ ចុចប៊ូតុង <b>+</b> : បើក/បិទ Inventory<br>
+    - ចុចកណ្ដុរឆ្វេង : បំផ្លាញ | ចុចកណ្ដុរស្តាំ : ដាក់ Block
   </div>
 
-  <div id="inventory">
-    <div class="slot active" data-color="0x55aa55" style="background: #55aa55;">1</div>
-    <div class="slot" data-color="0x8b5a2b" style="background: #8b5a2b;">2</div>
-    <div class="slot" data-color="0x808080" style="background: #808080;">3</div>
-    <div class="slot" data-color="0xff0000" style="background: #ff0000;">4</div>
-    <div class="slot" data-color="0x0088ff" style="background: #0088ff;">5</div>
+  <!-- Hotbar 10 Slots + Plus Button -->
+  <div id="hotbar-container">
+    <div id="hotbar" style="display:flex; gap:6px;"></div>
+    <div id="more-btn" title="បើក Inventory (Tab / E)">+</div>
+  </div>
+
+  <!-- Full Inventory Modal -->
+  <div id="full-inventory">
+    <h3>Inventory ប្លុកធម្មជាតិពេញលេញ</h3>
+    <p>ចុចលើ Block ដើម្បីប្ដូរ Slot ដើម ឬ **ចាប់ទាញ (Drag & Drop)** ចូល Slot ណាមួយក៏បាន</p>
+    <div class="grid-container" id="inventory-grid"></div>
+    <button id="close-inv-btn">បិទ (Close)</button>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
   <script>
-    // 1. Setup Scene, Camera & Renderer
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. បញ្ជី Block ធម្មជាតិ
+      const ALL_BLOCKS = [
+        { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
+        { id: 1, name: 'ដី (Dirt)', color: 0x8b5a2b },
+        { id: 2, name: 'ថ្ម (Stone)', color: 0x808080 },
+        { id: 3, name: 'ខ្សាច់ (Sand)', color: 0xe0c068 },
+        { id: 4, name: 'ឈើ (Wood)', color: 0x664422 },
+        { id: 5, name: 'ស្លឹកឈើ (Leaves)', color: 0x2e8b57 },
+        { id: 6, name: 'ទឹក (Water)', color: 0x2277dd },
+        { id: 7, name: 'ក្រួស (Gravel)', color: 0x706860 },
+        { id: 8, name: 'ដីឥដ្ឋ (Clay)', color: 0x9fa8a3 },
+        { id: 9, name: 'ស្មៅក្រហម', color: 0x992233 },
+        { id: 10, name: 'ប្រផេះចាស់', color: 0x363636 },
+        { id: 11, name: 'ខ្សាច់ក្រហម', color: 0xc45525 },
+        { id: 12, name: 'ភ្នំភ្លើង', color: 0x4f4f4f },
+        { id: 13, name: 'ព្រិល (Snow)', color: 0xf0f8ff },
+        { id: 14, name: 'ទឹកកក (Ice)', color: 0xa0d8ef },
+        { id: 15, name: 'ធ្យូង (Coal)', color: 0x222222 },
+        { id: 16, name: 'ដែក (Iron)', color: 0xd8af97 },
+        { id: 17, name: 'មាស (Gold)', color: 0xe6c619 },
+        { id: 18, name: 'ពេជ្រ (Diamond)', color: 0x4ee2ec }
+      ];
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const NORMAL_HEIGHT = 2.5;
-    const CROUCH_HEIGHT = 1.5;
-    camera.position.set(0, NORMAL_HEIGHT, 10);
+      let hotbarItems = ALL_BLOCKS.slice(0, 10);
+      let activeSlotIndex = 0;
+      let selectedColor = hotbarItems[0].color;
+      let draggedBlockIndex = null;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+      // 2. Three.js Scene Setup
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87ceeb);
 
-    // 2. Light Setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(20, 40, 20);
-    scene.add(dirLight);
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const PLAYER_HEIGHT = 1.6;
+      const PLAYER_RADIUS = 0.3;
 
-    // 3. Pointer Lock (Mouse Control)
-    const controls = new THREE.PointerLockControls(camera, document.body);
-    document.body.addEventListener('click', (e) => {
-      if (e.target.closest('#inventory')) return;
-      controls.lock();
-    });
+      let yVelocity = 0;
+      const GRAVITY = -28;
+      const JUMP_FORCE = 10.5;
+      let canJump = false;
+      let isFlying = false;
 
-    // 4. Create World (Blocks)
-    const objects = [];
-    const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
-
-    for (let x = -8; x < 8; x++) {
-      for (let z = -8; z < 8; z++) {
-        const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
-        cube.position.set(x, 0, z);
-        scene.add(cube);
-        objects.push(cube);
+      function spawnPlayer() {
+        camera.position.set(0, PLAYER_HEIGHT + 1, 0);
+        camera.rotation.set(0, 0, 0);
+        yVelocity = 0;
       }
-    }
 
-    // 5. Highlight Box
-    const highlightGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
-    const highlightMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.8
-    });
-    const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
-    highlightBox.visible = false;
-    scene.add(highlightBox);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
 
-    // 6. Inventory System
-    const colors = [0x55aa55, 0x8b5a2b, 0x808080, 0xff0000, 0x0088ff];
-    let selectedColor = colors[0];
-    const slots = document.querySelectorAll('.slot');
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(20, 40, 20);
+      scene.add(dirLight);
 
-    function selectSlot(index) {
-      slots.forEach((slot, i) => {
-        if (i === index) {
-          slot.classList.add('active');
-          selectedColor = colors[i];
+      // Create Ground
+      const objects = [];
+      const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
+
+      for (let x = -8; x < 8; x++) {
+        for (let z = -8; z < 8; z++) {
+          const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
+          cube.position.set(x, 0, z);
+          scene.add(cube);
+          objects.push(cube);
+        }
+      }
+
+      spawnPlayer();
+
+      // Highlight Box
+      const highlightGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+      const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 });
+      const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
+      highlightBox.visible = false;
+      scene.add(highlightBox);
+
+      // 3. Render UI & Drag-Drop Mechanics
+      const hotbarEl = document.getElementById('hotbar');
+      const fullInvModal = document.getElementById('full-inventory');
+      const invGrid = document.getElementById('inventory-grid');
+      const moreBtn = document.getElementById('more-btn');
+      const closeInvBtn = document.getElementById('close-inv-btn');
+
+      function renderHotbar() {
+        hotbarEl.innerHTML = '';
+        hotbarItems.forEach((item, index) => {
+          const slot = document.createElement('div');
+          slot.className = `slot ${index === activeSlotIndex ? 'active' : ''}`;
+          slot.style.background = '#' + item.color.toString(16).padStart(6, '0');
+          slot.innerText = index === 9 ? '0' : (index + 1);
+
+          // Event ចុចជ្រើសរើស Slot
+          slot.addEventListener('click', () => selectSlot(index));
+
+          // Drag & Drop Events លើ Hotbar Slots
+          slot.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            slot.classList.add('drag-over');
+          });
+
+          slot.addEventListener('dragleave', () => {
+            slot.classList.remove('drag-over');
+          });
+
+          slot.addEventListener('drop', (e) => {
+            e.preventDefault();
+            slot.classList.remove('drag-over');
+            if (draggedBlockIndex !== null) {
+              hotbarItems[index] = ALL_BLOCKS[draggedBlockIndex];
+              selectSlot(index);
+            }
+          });
+
+          hotbarEl.appendChild(slot);
+        });
+        selectedColor = hotbarItems[activeSlotIndex].color;
+      }
+
+      function selectSlot(index) {
+        if (index >= 0 && index < 10) {
+          activeSlotIndex = index;
+          renderHotbar();
+        }
+      }
+
+      function renderFullInventory() {
+        invGrid.innerHTML = '';
+        ALL_BLOCKS.forEach((block, index) => {
+          const card = document.createElement('div');
+          card.className = 'item-card';
+          card.draggable = true; // អនុញ្ញាតឱ្យចាប់ទាញ Drag ឆ្ពោះទៅកាន់ Hotbar
+
+          const colorHex = '#' + block.color.toString(16).padStart(6, '0');
+          card.innerHTML = `
+            <div class="item-color" style="background: ${colorHex}"></div>
+            <div class="item-name">${block.name}</div>
+          `;
+
+          // 🔥 ចុចលើ Item -> ដូរចូល Active Slot ដោយមិនបិទ Modal
+          card.addEventListener('click', () => {
+            hotbarItems[activeSlotIndex] = block;
+            renderHotbar();
+          });
+
+          // Drag Events
+          card.addEventListener('dragstart', () => {
+            draggedBlockIndex = index;
+          });
+
+          card.addEventListener('dragend', () => {
+            draggedBlockIndex = null;
+          });
+
+          invGrid.appendChild(card);
+        });
+      }
+
+      let isInvOpen = false;
+      function toggleInventory(forceState) {
+        isInvOpen = forceState !== undefined ? forceState : !isInvOpen;
+        if (isInvOpen) {
+          fullInvModal.style.display = 'flex';
+          document.exitPointerLock();
         } else {
-          slot.classList.remove('active');
+          fullInvModal.style.display = 'none';
+        }
+      }
+
+      moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleInventory(true);
+      });
+      closeInvBtn.addEventListener('click', () => toggleInventory(false));
+
+      renderHotbar();
+      renderFullInventory();
+
+      // 4. Pointer Lock & Controls
+      let isLocked = false;
+      let pitch = 0, yaw = 0;
+
+      document.body.addEventListener('click', (e) => {
+        if (e.target.closest('#hotbar-container') || e.target.closest('#full-inventory')) return;
+        if (!isInvOpen) document.body.requestPointerLock();
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        isLocked = document.pointerLockElement === document.body;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isLocked || isInvOpen) return;
+        yaw -= e.movementX * 0.002;
+        pitch -= e.movementY * 0.002;
+        pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
+
+        camera.rotation.order = "YXZ";
+        camera.rotation.y = yaw;
+        camera.rotation.x = pitch;
+      });
+
+      // 5. Keyboard Bindings
+      let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+      let moveUp = false, moveDown = false;
+      let lastSpaceTime = 0;
+
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Tab' || e.code === 'KeyE') {
+          e.preventDefault();
+          toggleInventory();
+          return;
+        }
+
+        if (isInvOpen) return;
+
+        switch (e.code) {
+          case 'KeyW': moveForward = true; break;
+          case 'KeyS': moveBackward = true; break;
+          case 'KeyA': moveLeft = true; break;
+          case 'KeyD': moveRight = true; break;
+          case 'Space':
+            const now = performance.now();
+            if (now - lastSpaceTime < 280) {
+              isFlying = !isFlying;
+              yVelocity = 0;
+            } else {
+              if (!isFlying && canJump) {
+                yVelocity = JUMP_FORCE;
+                canJump = false;
+              }
+            }
+            lastSpaceTime = now;
+            if (isFlying) moveUp = true;
+            break;
+          case 'ShiftLeft':
+          case 'ShiftRight': if (isFlying) moveDown = true; break;
+          case 'Digit1': selectSlot(0); break;
+          case 'Digit2': selectSlot(1); break;
+          case 'Digit3': selectSlot(2); break;
+          case 'Digit4': selectSlot(3); break;
+          case 'Digit5': selectSlot(4); break;
+          case 'Digit6': selectSlot(5); break;
+          case 'Digit7': selectSlot(6); break;
+          case 'Digit8': selectSlot(7); break;
+          case 'Digit9': selectSlot(8); break;
+          case 'Digit0': selectSlot(9); break;
         }
       });
-    }
 
-    slots.forEach((slot, index) => {
-      slot.addEventListener('click', () => selectSlot(index));
-    });
+      document.addEventListener('keyup', (e) => {
+        switch (e.code) {
+          case 'KeyW': moveForward = false; break;
+          case 'KeyS': moveBackward = false; break;
+          case 'KeyA': moveLeft = false; break;
+          case 'KeyD': moveRight = false; break;
+          case 'Space': moveUp = false; break;
+          case 'ShiftLeft':
+          case 'ShiftRight': moveDown = false; break;
+        }
+      });
 
-    // 7. Movement, Fly & Collision State
-    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-    let moveUp = false, moveDown = false;
-    let isCrouching = false;
-    let isFlying = false;
-
-    // Double Press Space to Toggle Fly
-    let lastSpaceTime = 0;
-
-    const onKeyDown = (e) => {
-      switch (e.code) {
-        case 'KeyW': moveForward = true; break;
-        case 'KeyS': moveBackward = true; break;
-        case 'KeyA': moveLeft = true; break;
-        case 'KeyD': moveRight = true; break;
-        case 'Space':
-          const now = performance.now();
-          if (now - lastSpaceTime < 300) {
-            isFlying = !isFlying; // បើក/បិទ Fly
-          }
-          lastSpaceTime = now;
-          if (isFlying) moveUp = true;
-          break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          if (isFlying) moveDown = true;
-          else isCrouching = true;
-          break;
-        case 'Digit1': selectSlot(0); break;
-        case 'Digit2': selectSlot(1); break;
-        case 'Digit3': selectSlot(2); break;
-        case 'Digit4': selectSlot(3); break;
-        case 'Digit5': selectSlot(4); break;
-      }
-    };
-
-    const onKeyUp = (e) => {
-      switch (e.code) {
-        case 'KeyW': moveForward = false; break;
-        case 'KeyS': moveBackward = false; break;
-        case 'KeyA': moveLeft = false; break;
-        case 'KeyD': moveRight = false; break;
-        case 'Space': moveUp = false; break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          moveDown = false;
-          isCrouching = false;
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
-
-    // 8. Collision Detection Function
-    function checkCollision(newPos) {
-      if (isFlying) return false; // ពេលហោះ មិនបាច់គិត Collision ឡើយ
-
-      const playerRadius = 0.4;
-      const playerHeight = isCrouching ? CROUCH_HEIGHT : NORMAL_HEIGHT;
-
-      for (let obj of objects) {
-        const box = new THREE.Box3().setFromObject(obj);
-        // បង្កើត Bounding Box សម្រាប់ Player
-        const playerBox = new THREE.Box3(
-          new THREE.Vector3(newPos.x - playerRadius, newPos.y - playerHeight + 0.5, newPos.z - playerRadius),
-          new THREE.Vector3(newPos.x + playerRadius, newPos.y + 0.2, newPos.z + playerRadius)
+      // 6. Physics Collision
+      function checkCollisionAt(pos) {
+        if (isFlying) return false;
+        const pBox = new THREE.Box3(
+          new THREE.Vector3(pos.x - PLAYER_RADIUS, pos.y - PLAYER_HEIGHT + 0.5, pos.z - PLAYER_RADIUS),
+          new THREE.Vector3(pos.x + PLAYER_RADIUS, pos.y - 0.1, pos.z + PLAYER_RADIUS)
         );
 
-        if (playerBox.intersectsBox(box)) {
-          return true; // មានការបុក
+        for (let obj of objects) {
+          if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) return true;
         }
+        return false;
       }
-      return false;
-    }
 
-    // 9. Raycaster for Adding/Removing Blocks
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(0, 0);
+      // 7. Raycasting for Destroy/Build
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(0, 0);
 
-    window.addEventListener('mousedown', (e) => {
-      if (!controls.isLocked) return;
+      window.addEventListener('mousedown', (e) => {
+        if (!isLocked || isInvOpen) return;
 
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(objects);
-
-      if (intersects.length > 0) {
-        const intersect = intersects[0];
-
-        if (e.button === 0) {
-          scene.remove(intersect.object);
-          objects.splice(objects.indexOf(intersect.object), 1);
-          highlightBox.visible = false;
-        } else if (e.button === 2) {
-          const blockMat = new THREE.MeshLambertMaterial({ color: selectedColor });
-          const voxel = new THREE.Mesh(blockGeometry, blockMat);
-          
-          const targetPos = new THREE.Vector3()
-            .copy(intersect.object.position)
-            .add(intersect.face.normal);
-            
-          voxel.position.copy(targetPos);
-          scene.add(voxel);
-          objects.push(voxel);
-        }
-      }
-    });
-
-    window.addEventListener('contextmenu', e => e.preventDefault());
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // 10. Game Loop
-    const clock = new THREE.Clock();
-    function animate() {
-      requestAnimationFrame(animate);
-
-      if (controls.isLocked) {
-        const delta = clock.getDelta();
-        const speed = isFlying ? 10 : (isCrouching ? 2.5 : 5);
-
-        // រក្សាទុកទីតាំងចាស់
-        const oldPos = camera.position.clone();
-
-        // គណនាការផ្លាស់ទី
-        if (moveForward) controls.moveForward(speed * delta);
-        if (moveBackward) controls.moveForward(-speed * delta);
-        if (moveLeft) controls.moveRight(-speed * delta);
-        if (moveRight) controls.moveRight(speed * delta);
-
-        if (isFlying) {
-          if (moveUp) camera.position.y += speed * delta;
-          if (moveDown) camera.position.y -= speed * delta;
-        } else {
-          // Smooth Crouch Animation ពេលដើរ
-          const targetHeight = isCrouching ? CROUCH_HEIGHT : NORMAL_HEIGHT;
-          camera.position.y += (targetHeight - camera.position.y) * 0.2;
-        }
-
-        // ប្រព័ន្ធ Collision: បើដើរបុក Block ឱ្យត្រឡប់ទៅទីតាំងចាស់វិញ
-        if (checkCollision(camera.position)) {
-          camera.position.copy(oldPos);
-        }
-
-        // Highlight Box Position
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(objects);
 
         if (intersects.length > 0) {
-          highlightBox.position.copy(intersects[0].object.position);
-          highlightBox.visible = true;
-        } else {
-          highlightBox.visible = false;
+          const intersect = intersects[0];
+          if (e.button === 0) {
+            scene.remove(intersect.object);
+            objects.splice(objects.indexOf(intersect.object), 1);
+            highlightBox.visible = false;
+          } else if (e.button === 2) {
+            const targetPos = new THREE.Vector3().copy(intersect.object.position).add(intersect.face.normal);
+
+            const blockBox = new THREE.Box3(
+              new THREE.Vector3(targetPos.x - 0.5, targetPos.y - 0.5, targetPos.z - 0.5),
+              new THREE.Vector3(targetPos.x + 0.5, targetPos.y + 0.5, targetPos.z + 0.5)
+            );
+            const pBox = new THREE.Box3(
+              new THREE.Vector3(camera.position.x - PLAYER_RADIUS, camera.position.y - PLAYER_HEIGHT, camera.position.z - PLAYER_RADIUS),
+              new THREE.Vector3(camera.position.x + PLAYER_RADIUS, camera.position.y, camera.position.z + PLAYER_RADIUS)
+            );
+
+            if (!blockBox.intersectsBox(pBox)) {
+              const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: selectedColor }));
+              voxel.position.copy(targetPos);
+              scene.add(voxel);
+              objects.push(voxel);
+            }
+          }
         }
+      });
+
+      window.addEventListener('contextmenu', e => e.preventDefault());
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // 8. Main Loop
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = Math.min(clock.getDelta(), 0.1);
+        const speed = isFlying ? 10 : 5;
+
+        if (isLocked && !isInvOpen) {
+          const front = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+          const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+          const moveDir = new THREE.Vector3();
+          if (moveForward) moveDir.add(front);
+          if (moveBackward) moveDir.sub(front);
+          if (moveRight) moveDir.add(side);
+          if (moveLeft) moveDir.sub(side);
+          moveDir.normalize();
+
+          const oldPos = camera.position.clone();
+          camera.position.x += moveDir.x * speed * delta;
+          camera.position.z += moveDir.z * speed * delta;
+
+          if (checkCollisionAt(camera.position)) {
+            camera.position.x = oldPos.x;
+            camera.position.z = oldPos.z;
+          }
+
+          if (isFlying) {
+            if (moveUp) camera.position.y += speed * delta;
+            if (moveDown) camera.position.y -= speed * delta;
+          } else {
+            yVelocity += GRAVITY * delta;
+            camera.position.y += yVelocity * delta;
+
+            const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, PLAYER_HEIGHT + 0.2);
+            const hits = downRay.intersectObjects(objects);
+
+            if (hits.length > 0 && yVelocity <= 0) {
+              camera.position.y = hits[0].point.y + PLAYER_HEIGHT;
+              yVelocity = 0;
+              canJump = true;
+            } else {
+              canJump = false;
+            }
+
+            if (camera.position.y < -30) {
+              spawnPlayer();
+            }
+          }
+
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(objects);
+          if (intersects.length > 0) {
+            highlightBox.position.copy(intersects[0].object.position);
+            highlightBox.visible = true;
+          } else {
+            highlightBox.visible = false;
+          }
+        }
+
+        renderer.render(scene, camera);
       }
 
-      renderer.render(scene, camera);
-    }
-    animate();
+      animate();
+    });
   </script>
 </body>
 </html>
