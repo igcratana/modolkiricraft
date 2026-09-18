@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Minecraft Clone - Fly & Collision</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    #crosshair {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 10px; height: 10px;
+      margin-top: -5px; margin-left: -5px;
+      color: white; font-size: 20px;
+      user-select: none; pointer-events: none;
+      z-index: 10;
+    }
+    #instructions {
+      position: absolute;
+      top: 10px; left: 10px;
+      color: white; background: rgba(0,0,0,0.6);
+      padding: 10px; border-radius: 5px;
+      z-index: 10;
+    }
+    #inventory {
+      position: absolute;
+      bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 8px;
+      background: rgba(0,0,0,0.6);
+      padding: 8px; border-radius: 8px;
+      border: 2px solid #555;
+      z-index: 10;
+    }
+    .slot {
+      width: 40px; height: 40px;
+      border: 3px solid #777;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold;
+      text-shadow: 1px 1px 2px black;
+      user-select: none;
+    }
+    .slot.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="crosshair">+</div>
+  
+  <div id="instructions">
+    <b>របៀបបញ្ជា៖</b><br>
+    - ចុចលើអេក្រង់ដើម្បីចាប់ផ្តើម (Lock Pointer)<br>
+    - W, A, S, D : ដើរ<br>
+    - <b>ចុច Space 2 ដងជាប់ៗគ្នា</b> : បើក/បិទ របៀបហោះ (Fly Mode)<br>
+    - <b>Space</b> (ពេលហោះ) : ហោះឡើង | <b>Shift</b> (ពេលហោះ) : ហោះចុះ<br>
+    - <b>Shift ឆ្វេង</b> (ពេលដើរ) : បន្ទាបខ្លួន (Crouch)<br>
+    - <b>1 ដល់ 5</b> : ជ្រើសរើសពណ៌ Block (Inventory)<br>
+    - ចុចកណ្ដុរឆ្វេង : បំផ្លាញ Block | ចុចកណ្ដុរស្តាំ : ដាក់ Block
+  </div>
+
+  <div id="inventory">
+    <div class="slot active" data-color="0x55aa55" style="background: #55aa55;">1</div>
+    <div class="slot" data-color="0x8b5a2b" style="background: #8b5a2b;">2</div>
+    <div class="slot" data-color="0x808080" style="background: #808080;">3</div>
+    <div class="slot" data-color="0xff0000" style="background: #ff0000;">4</div>
+    <div class="slot" data-color="0x0088ff" style="background: #0088ff;">5</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <script>
+    // 1. Setup Scene, Camera & Renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const NORMAL_HEIGHT = 2.5;
+    const CROUCH_HEIGHT = 1.5;
+    camera.position.set(0, NORMAL_HEIGHT, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 2. Light Setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(20, 40, 20);
+    scene.add(dirLight);
+
+    // 3. Pointer Lock (Mouse Control)
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    document.body.addEventListener('click', (e) => {
+      if (e.target.closest('#inventory')) return;
+      controls.lock();
+    });
+
+    // 4. Create World (Blocks)
+    const objects = [];
+    const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
+
+    for (let x = -8; x < 8; x++) {
+      for (let z = -8; z < 8; z++) {
+        const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
+        cube.position.set(x, 0, z);
+        scene.add(cube);
+        objects.push(cube);
+      }
+    }
+
+    // 5. Highlight Box
+    const highlightGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+    const highlightMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.8
+    });
+    const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
+    highlightBox.visible = false;
+    scene.add(highlightBox);
+
+    // 6. Inventory System
+    const colors = [0x55aa55, 0x8b5a2b, 0x808080, 0xff0000, 0x0088ff];
+    let selectedColor = colors[0];
+    const slots = document.querySelectorAll('.slot');
+
+    function selectSlot(index) {
+      slots.forEach((slot, i) => {
+        if (i === index) {
+          slot.classList.add('active');
+          selectedColor = colors[i];
+        } else {
+          slot.classList.remove('active');
+        }
+      });
+    }
+
+    slots.forEach((slot, index) => {
+      slot.addEventListener('click', () => selectSlot(index));
+    });
+
+    // 7. Movement, Fly & Collision State
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let moveUp = false, moveDown = false;
+    let isCrouching = false;
+    let isFlying = false;
+
+    // Double Press Space to Toggle Fly
+    let lastSpaceTime = 0;
+
+    const onKeyDown = (e) => {
+      switch (e.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyD': moveRight = true; break;
+        case 'Space':
+          const now = performance.now();
+          if (now - lastSpaceTime < 300) {
+            isFlying = !isFlying; // បើក/បិទ Fly
+          }
+          lastSpaceTime = now;
+          if (isFlying) moveUp = true;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          if (isFlying) moveDown = true;
+          else isCrouching = true;
+          break;
+        case 'Digit1': selectSlot(0); break;
+        case 'Digit2': selectSlot(1); break;
+        case 'Digit3': selectSlot(2); break;
+        case 'Digit4': selectSlot(3); break;
+        case 'Digit5': selectSlot(4); break;
+      }
+    };
+
+    const onKeyUp = (e) => {
+      switch (e.code) {
+        case 'KeyW': moveForward = false; break;
+        case 'KeyS': moveBackward = false; break;
+        case 'KeyA': moveLeft = false; break;
+        case 'KeyD': moveRight = false; break;
+        case 'Space': moveUp = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveDown = false;
+          isCrouching = false;
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    // 8. Collision Detection Function
+    function checkCollision(newPos) {
+      if (isFlying) return false; // ពេលហោះ មិនបាច់គិត Collision ឡើយ
+
+      const playerRadius = 0.4;
+      const playerHeight = isCrouching ? CROUCH_HEIGHT : NORMAL_HEIGHT;
+
+      for (let obj of objects) {
+        const box = new THREE.Box3().setFromObject(obj);
+        // បង្កើត Bounding Box សម្រាប់ Player
+        const playerBox = new THREE.Box3(
+          new THREE.Vector3(newPos.x - playerRadius, newPos.y - playerHeight + 0.5, newPos.z - playerRadius),
+          new THREE.Vector3(newPos.x + playerRadius, newPos.y + 0.2, newPos.z + playerRadius)
+        );
+
+        if (playerBox.intersectsBox(box)) {
+          return true; // មានការបុក
+        }
+      }
+      return false;
+    }
+
+    // 9. Raycaster for Adding/Removing Blocks
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2(0, 0);
+
+    window.addEventListener('mousedown', (e) => {
+      if (!controls.isLocked) return;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(objects);
+
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+
+        if (e.button === 0) {
+          scene.remove(intersect.object);
+          objects.splice(objects.indexOf(intersect.object), 1);
+          highlightBox.visible = false;
+        } else if (e.button === 2) {
+          const blockMat = new THREE.MeshLambertMaterial({ color: selectedColor });
+          const voxel = new THREE.Mesh(blockGeometry, blockMat);
+          
+          const targetPos = new THREE.Vector3()
+            .copy(intersect.object.position)
+            .add(intersect.face.normal);
+            
+          voxel.position.copy(targetPos);
+          scene.add(voxel);
+          objects.push(voxel);
+        }
+      }
+    });
+
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 10. Game Loop
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (controls.isLocked) {
+        const delta = clock.getDelta();
+        const speed = isFlying ? 10 : (isCrouching ? 2.5 : 5);
+
+        // រក្សាទុកទីតាំងចាស់
+        const oldPos = camera.position.clone();
+
+        // គណនាការផ្លាស់ទី
+        if (moveForward) controls.moveForward(speed * delta);
+        if (moveBackward) controls.moveForward(-speed * delta);
+        if (moveLeft) controls.moveRight(-speed * delta);
+        if (moveRight) controls.moveRight(speed * delta);
+
+        if (isFlying) {
+          if (moveUp) camera.position.y += speed * delta;
+          if (moveDown) camera.position.y -= speed * delta;
+        } else {
+          // Smooth Crouch Animation ពេលដើរ
+          const targetHeight = isCrouching ? CROUCH_HEIGHT : NORMAL_HEIGHT;
+          camera.position.y += (targetHeight - camera.position.y) * 0.2;
+        }
+
+        // ប្រព័ន្ធ Collision: បើដើរបុក Block ឱ្យត្រឡប់ទៅទីតាំងចាស់វិញ
+        if (checkCollision(camera.position)) {
+          camera.position.copy(oldPos);
+        }
+
+        // Highlight Box Position
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(objects);
+
+        if (intersects.length > 0) {
+          highlightBox.position.copy(intersects[0].object.position);
+          highlightBox.visible = true;
+        } else {
+          highlightBox.visible = false;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
