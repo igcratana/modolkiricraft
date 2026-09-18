@@ -254,7 +254,7 @@
       background: rgba(0,0,0,0.85); z-index: 120; align-items: center; justify-content: center;
     }
     .modal-box {
-      background: #222; border: 2px solid #55aa55; border-radius: 10px; padding: 20px; width: 360px; color: white; text-align: center;
+      background: #222; border: 2px solid #55aa55; border-radius: 10px; padding: 20px; width: 380px; color: white; text-align: center;
     }
     .modal-box input { width: 100%; padding: 10px; margin: 6px 0 12px 0; border-radius: 6px; border: 1px solid #777; outline: none; background: #111; color: white; }
     
@@ -264,6 +264,11 @@
     }
     .btn-del { background: #d9534f; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
     .btn-load-item { background: #5cb85c; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+
+    .room-history-card {
+      background: #2a2a2a; border: 1px solid #555; border-radius: 6px;
+      padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -336,14 +341,22 @@
 
   <!-- MULTIPLAYER MODAL POPUP -->
   <div class="modal-overlay" id="multiplayer-modal">
-    <div class="modal-box">
+    <div class="modal-box" style="width: 420px;">
       <h3>🌐 ONLINE MULTIPLAYER</h3>
       <button class="menu-btn" style="width:100%; margin-bottom:10px;" id="btn-create-room">👑 បង្កើត Room ថ្មី (Host)</button>
-      <hr style="border-color:#444; margin:12px 0;">
-      <div style="text-align:left; font-size:12px;">បញ្ចូល Room ID/ឈ្មោះ ដើម្បីចូលលេងជាមួយ Host:</div>
-      <input type="text" id="join-room-id-input" placeholder="ឧទាហរណ៍: rathana-world">
-      <button class="menu-btn" style="width:100%; background:#0275d8;" id="btn-join-room">🔗 ចូលរួមលេង (Join Room)</button>
-      <button class="menu-btn" style="width:100%; background:#d9534f; border:none; margin-top:10px;" id="btn-close-mp">បោះបង់</button>
+      
+      <div style="text-align:left; font-size:12px; margin-top:8px;">ចូលរួមលេងតាម Room ID:</div>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <input type="text" id="join-room-id-input" placeholder="ឧទាហរណ៍: room-123" style="margin:0;">
+        <button class="menu-btn" style="width:110px; background:#0275d8; padding:8px; font-size:13px;" id="btn-join-room">Join Room</button>
+      </div>
+
+      <hr style="border-color:#444; margin:14px 0;">
+      
+      <div style="text-align:left; font-size:13px; font-weight:bold; color:#ffca28; margin-bottom:6px;">📋 បញ្ជី Room ដែលធ្លាប់បង្កើត និង Join៖</div>
+      <div id="multiplayer-rooms-history" style="max-height: 180px; overflow-y: auto;"></div>
+
+      <button class="menu-btn" style="width:100%; background:#d9534f; border:none; margin-top:12px;" id="btn-close-mp">បោះបង់</button>
     </div>
   </div>
 
@@ -466,7 +479,6 @@
       let keysPressed = {};
       let lastSpaceTime = 0;
 
-      // មុខងារចាកចេញ និងសម្អាត Network ទាំងស្រុង
       function clearNetworkSession() {
         if (peer && peer.id) {
           broadcastNetData({ type: 'PLAYER_LEAVE', id: peer.id });
@@ -476,12 +488,23 @@
         });
         otherPlayers = {};
 
+        if (hostConn) {
+          try { hostConn.close(); } catch(e){}
+          hostConn = null;
+        }
+
+        connections.forEach(c => {
+          try { c.close(); } catch(e){}
+        });
+        connections = [];
+
         if (peer) {
-          try { peer.destroy(); } catch(e){}
+          try {
+            peer.disconnect();
+            peer.destroy();
+          } catch(e){}
           peer = null;
         }
-        connections = [];
-        hostConn = null;
         currentRoomId = "";
         const badge = document.getElementById('room-status-badge');
         if(badge) badge.style.display = 'none';
@@ -631,16 +654,118 @@
         showToast('🎮 បានចាប់ផ្ដើមហ្គេមថ្មី!');
       };
 
-      // ពេលចុច Menu គឺធ្វើការ clear network និងចេញក្រៅភ្លាមៗ
+      // ចុច Menu ដើម្បីត្រឡប់ថយក្រោយ និងដាច់ការតភ្ជាប់ Room ទាំងស្រុង
       menuBackBtn.onclick = () => {
         clearNetworkSession();
         gameStarted = false;
         mainMenuEl.style.display = 'flex';
         document.exitPointerLock?.();
+        showToast('🏠 បានចាកចេញពី Room ជោគជ័យ!');
+      };
+
+      // --- ROOM HISTORY & MULTIPLAYER LOGIC ---
+      function saveRoomToHistory(roomId, isHostRole) {
+        let history = JSON.parse(localStorage.getItem('mc_room_history') || '{}');
+        history[roomId] = {
+          roomId: roomId,
+          isHost: isHostRole,
+          lastJoined: Date.now()
+        };
+        localStorage.setItem('mc_room_history', JSON.stringify(history));
+      }
+
+      function renderRoomHistory() {
+        const container = document.getElementById('multiplayer-rooms-history');
+        let history = JSON.parse(localStorage.getItem('mc_room_history') || '{}');
+        let roomIds = Object.keys(history);
+
+        if (roomIds.length === 0) {
+          container.innerHTML = '<div style="color:#aaa; font-size:12px; text-align:center; padding:10px;">ពុំទាន់មានប្រវត្តិ Room ឡើយ</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        roomIds.forEach(id => {
+          let item = history[id];
+          let typeLabel = item.isHost ? '🏠 Room របស់អ្នក (Host)' : '🔗 Server ធ្លាប់ Join';
+          
+          let card = document.createElement('div');
+          card.className = 'room-history-card';
+          card.innerHTML = `
+            <div>
+              <div style="font-weight:bold; font-size:13px; color:#ffca28;">${id}</div>
+              <div style="font-size:10px; color:#aaa;">${typeLabel}</div>
+              <div style="font-size:11px; margin-top:2px;" id="status-text-${id}">⏳ កំពុងពិនិត្យ...</div>
+            </div>
+            <div>
+              <button class="btn-load-item" onclick="joinExistingRoom('${id}')">ចូលលេង</button>
+            </div>
+          `;
+          container.appendChild(card);
+
+          checkPeerOnline(id, (isOnline) => {
+            let statusEl = document.getElementById(`status-text-${id}`);
+            if (statusEl) {
+              if (isOnline) {
+                statusEl.innerHTML = '<span style="color:#5cb85c; font-weight:bold;">🟢 Online</span>';
+              } else {
+                statusEl.innerHTML = '<span style="color:#d9534f;">🔴 Offline</span>';
+              }
+            }
+          });
+        });
+      }
+
+      function checkPeerOnline(targetId, callback) {
+        let tempPeer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
+        let responded = false;
+
+        tempPeer.on('open', () => {
+          let c = tempPeer.connect(targetId, { reliable: false });
+          let timer = setTimeout(() => {
+            if (!responded) {
+              responded = true;
+              try { tempPeer.destroy(); } catch(e){}
+              callback(false);
+            }
+          }, 2500);
+
+          c.on('open', () => {
+            if (!responded) {
+              responded = true;
+              clearTimeout(timer);
+              c.close();
+              try { tempPeer.destroy(); } catch(e){}
+              callback(true);
+            }
+          });
+
+          c.on('error', () => {
+            if (!responded) {
+              responded = true;
+              clearTimeout(timer);
+              try { tempPeer.destroy(); } catch(e){}
+              callback(false);
+            }
+          });
+        });
+
+        tempPeer.on('error', () => {
+          if (!responded) {
+            responded = true;
+            callback(false);
+          }
+        });
+      }
+
+      window.joinExistingRoom = (roomId) => {
+        document.getElementById('multiplayer-modal').style.display = 'none';
+        joinHostRoom(roomId);
       };
 
       document.getElementById('btn-multiplayer').onclick = () => {
         document.getElementById('multiplayer-modal').style.display = 'flex';
+        renderRoomHistory();
       };
       document.getElementById('btn-close-mp').onclick = () => {
         document.getElementById('multiplayer-modal').style.display = 'none';
@@ -649,6 +774,7 @@
       document.getElementById('btn-create-room').onclick = () => {
         const roomId = prompt('បញ្ចូលឈ្មោះ/ID Room ដែលត្រូវបង្កើត:', 'room-' + Math.floor(Math.random() * 1000));
         if (roomId) {
+          saveRoomToHistory(roomId, true);
           setupHostRoom(roomId);
           document.getElementById('multiplayer-modal').style.display = 'none';
           startGame();
@@ -665,6 +791,7 @@
       function setupHostRoom(roomId) {
         clearNetworkSession();
         isHost = true;
+        saveRoomToHistory(roomId, true);
         peer = new Peer(roomId, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
         peer.on('open', (id) => {
@@ -700,11 +827,12 @@
       function joinHostRoom(targetRoomId, callbackFailed) {
         clearNetworkSession();
         isHost = false;
+        saveRoomToHistory(targetRoomId, false);
         peer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
         let connectionTimeout = setTimeout(() => {
           if (!hostConn || !hostConn.open) {
-            showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ មិនអាចលេងបានទេ!');
+            showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ ឬ Server Offline!');
             clearNetworkSession();
             if (callbackFailed) callbackFailed();
           }
@@ -721,9 +849,7 @@
             showToast('✅ បានភ្ជាប់ទៅកាន់ Host ជោគជ័យ!');
             document.getElementById('multiplayer-modal').style.display = 'none';
 
-            // Auto save ឈ្មោះ Room នេះចូលទៅក្នុង Local Save សម្រាប់ Load Game ពេលក្រោយដោយស្វ័យប្រវត្តិ
             autoSaveJoinedRoom(targetRoomId);
-
             startGame();
           });
 
@@ -737,13 +863,12 @@
 
         peer.on('error', () => {
           clearTimeout(connectionTimeout);
-          showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ មិនអាចលេងបានទេ!');
+          showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ ឬ Server Offline!');
           clearNetworkSession();
           if (callbackFailed) callbackFailed();
         });
       }
 
-      // Auto save ចូល Local Storage ពេលចូល room គេ
       function autoSaveJoinedRoom(roomId) {
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
         const saveName = `Room_${roomId}`;
