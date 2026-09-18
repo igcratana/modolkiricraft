@@ -2,9 +2,10 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D Minecraft Clone - Keo Rathana</title>
   <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; user-select: none; }
+    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; user-select: none; touch-action: none; }
     
     #crosshair {
       position: absolute;
@@ -15,7 +16,7 @@
       pointer-events: none; z-index: 10;
     }
 
-    /* ប៊ូតុងបញ្ជាលើអេក្រង់ (Save, Load, Help) */
+    /* ប៊ូតុងបញ្ជាលើអេក្រង់ */
     #top-left-controls {
       position: absolute;
       top: 15px; left: 15px;
@@ -52,14 +53,15 @@
       position: absolute;
       bottom: 15px; left: 50%;
       transform: translateX(-50%);
-      display: flex; gap: 6px; align-items: center;
+      display: flex; gap: 4px; align-items: center;
       background: rgba(0, 0, 0, 0.75);
       padding: 6px; border-radius: 8px;
       border: 2px solid #555; z-index: 10;
+      max-width: 95vw; overflow-x: auto;
     }
     
     .slot {
-      width: 44px; height: 44px;
+      width: 40px; height: 40px; flex-shrink: 0;
       border: 2px solid #777; border-radius: 4px;
       cursor: pointer; display: flex;
       align-items: center; justify-content: center;
@@ -70,88 +72,99 @@
     }
     
     .slot.active { border-color: #ffffff; box-shadow: 0 0 10px #ffffff; }
-    .slot.drag-over { border-color: #00ff00 !important; background-color: rgba(0, 255, 0, 0.2) !important; }
 
     #more-btn {
-      width: 44px; height: 44px;
+      width: 40px; height: 40px; flex-shrink: 0;
       background: #444; border: 2px solid #888;
       border-radius: 4px; color: #fff;
       font-size: 22px; font-weight: bold;
       cursor: pointer; display: flex;
       align-items: center; justify-content: center;
     }
-    #more-btn:hover { background: #666; }
 
     /* Full Inventory Modal */
     #full-inventory {
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 500px; background: rgba(20, 20, 20, 0.95);
+      width: 90vw; max-width: 500px; background: rgba(20, 20, 20, 0.95);
       border: 3px solid #888; border-radius: 10px;
       padding: 15px; display: none;
       flex-direction: column; gap: 10px;
       z-index: 20; color: white;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      box-sizing: border-box;
     }
 
-    .inv-header {
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .inv-header h3 { margin: 0; }
-    
-    #inv-info-btn {
-      background: #444; border: 1px solid #aaa; color: #fff;
-      padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
-    }
-    #inv-info-btn:hover { background: #666; }
+    .inv-header { display: flex; justify-content: space-between; align-items: center; }
+    .inv-header h3 { margin: 0; font-size: 16px; }
 
     .grid-container {
-      display: grid; grid-template-columns: repeat(5, 1fr);
-      gap: 10px; max-height: 280px; overflow-y: auto; padding: 5px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px; max-height: 250px; overflow-y: auto; padding: 5px;
     }
 
     .item-card {
       background: #333; border: 2px solid #555;
-      border-radius: 6px; padding: 8px;
+      border-radius: 6px; padding: 6px;
       display: flex; flex-direction: column;
-      align-items: center; cursor: grab; transition: 0.2s;
+      align-items: center; cursor: pointer;
     }
-    .item-card:active { cursor: grabbing; }
-    .item-card:hover { border-color: #fff; background: #555; }
     
-    .item-color { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #000; margin-bottom: 4px; pointer-events: none; }
-    .item-name { font-size: 11px; text-align: center; pointer-events: none; }
+    .item-color { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #000; margin-bottom: 4px; }
+    .item-name { font-size: 10px; text-align: center; }
 
-    /* Copyright Footer Style */
     .inv-copyright {
-      text-align: center;
-      font-size: 12px;
-      color: #ffca28;
-      font-weight: bold;
-      border-top: 1px solid #444;
-      padding-top: 8px;
-      margin-top: 4px;
+      text-align: center; font-size: 11px;
+      color: #ffca28; font-weight: bold;
+      border-top: 1px solid #444; padding-top: 8px; margin-top: 4px;
     }
 
     #close-inv-btn {
       align-self: center; padding: 6px 25px;
       background: #aa3333; border: none;
       color: white; border-radius: 5px;
-      cursor: pointer; font-weight: bold; margin-top: 2px;
+      cursor: pointer; font-weight: bold;
     }
-    #close-inv-btn:hover { background: #ff4444; }
 
-    /* Toast Notification for Save/Load */
     #toast {
-      position: absolute;
-      top: 20px; right: 20px;
-      background: rgba(40, 167, 69, 0.9);
-      color: white; padding: 10px 18px;
-      border-radius: 6px; font-weight: bold;
+      position: absolute; top: 15px; right: 15px;
+      background: rgba(40, 167, 69, 0.9); color: white;
+      padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;
       display: none; z-index: 30;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
+
+    /* MOBILE CONTROLS UI */
+    #joystick-zone {
+      position: absolute; bottom: 80px; left: 20px;
+      width: 100px; height: 100px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%; z-index: 12; touch-action: none;
+    }
+
+    #joystick-knob {
+      position: absolute; top: 30px; left: 30px;
+      width: 40px; height: 40px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%; pointer-events: none;
+    }
+
+    #mobile-action-btns {
+      position: absolute; bottom: 80px; right: 20px;
+      display: flex; gap: 10px;
+      z-index: 12;
+    }
+
+    .m-btn {
+      width: 55px; height: 55px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #aaa; border-radius: 50%;
+      color: white; font-weight: bold; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: manipulation;
+    }
+    .m-btn:active { background: rgba(255, 255, 255, 0.4); }
   </style>
 </head>
 <body>
@@ -159,41 +172,45 @@
   <div id="crosshair">+</div>
   <div id="toast">បានរក្សាទុកដោយជោគជ័យ!</div>
   
-  <!-- ប៊ូតុងបញ្ជាខាងលើ (Save, Load, Help) -->
   <div id="top-left-controls">
-    <button class="btn-ui" id="save-btn" title="រក្សាទុកហ្គេម">💾 Save</button>
-    <button class="btn-ui" id="load-btn" title="ទាញយកហ្គេមមកលេងវិញ">📂 Load</button>
-    <button class="btn-ui" id="help-icon-btn" title="មើលរបៀបបញ្ជា">❓</button>
+    <button class="btn-ui" id="save-btn">💾 Save</button>
+    <button class="btn-ui" id="load-btn">📂 Load</button>
+    <button class="btn-ui" id="help-icon-btn">❓</button>
   </div>
 
-  <!-- ផ្ទាំងព័ត៌មានណែនាំ -->
   <div id="info-modal">
     <b>របៀបបញ្ជា៖</b><br>
-    - <b>W, A, S, D</b> : ដើរ | <b>Space</b> : លោត<br>
-    - <b>Space 2ដង</b> : ហោះ/ឈប់ហោះ<br>
-    - <b>Scroll Mouse</b> : ប្ដូរ Slot លើ Hotbar<br>
-    - <b>Middle Click</b> : Copy Block (Pick Block)<br>
-    - <b>Tab / E</b> : បើក/បិទ Inventory<br>
-    - <b>ចុចឆ្វេង</b> : បំផ្លាញ | <b>ចុចស្តាំ</b> : ដាក់ Block
+    - <b>លេខ 1-9 & 0 / Mouse Scroll:</b> ប្ដូរ Slot<br>
+    - <b>Middle Mouse Click / 2-Fingers:</b> Copy ពណ៌<br>
+    - <b>Space:</b> លោត / ហោះឡើង (Fly)<br>
+    - <b>Double Space:</b> បើក / បិទ របៀបហោះ<br>
+    - <b>Shift:</b> អោន / ចុះក្រោម (Fly)<br>
+    - <b>ទូរស័ព្ទ (Touch):</b><br>
+    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Break
   </div>
 
-  <!-- Hotbar -->
   <div id="hotbar-container">
     <div id="hotbar" style="display:flex; gap:6px;"></div>
-    <div id="more-btn" title="បើក Inventory (Tab / E)">+</div>
+    <div id="more-btn">+</div>
   </div>
 
-  <!-- Full Inventory Modal -->
+  <div id="joystick-zone">
+    <div id="joystick-knob"></div>
+  </div>
+
+  <div id="mobile-action-btns">
+    <div class="m-btn" id="m-btn-jump">⬆ Jump</div>
+    <div class="m-btn" id="m-btn-fly">✈ Fly</div>
+  </div>
+
   <div id="full-inventory">
     <div class="inv-header">
       <h3>Inventory ប្លុកធម្មជាតិ</h3>
-      <button id="inv-info-btn">❓ របៀបបញ្ជា</button>
     </div>
-    <p style="margin:0; font-size:12px; color:#aaa;">ចុចលើ Block ដើម្បីប្ដូរ Slot ឬ Drag & Drop ចូល Slot ណាមួយក៏បាន</p>
+    <p style="margin:0; font-size:11px; color:#aaa;">ចុចលើ Block ដើម្បីប្ដូរ Slot លើ Hotbar</p>
     
     <div class="grid-container" id="inventory-grid"></div>
 
-    <!-- អត្ថបទ Copyright -->
     <div class="inv-copyright">
       Copyright © រក្សាសិទ្ធិគ្រប់យ៉ាងដោយ លោក កែវ រតនា ហៅ ប្រូខួច
     </div>
@@ -230,24 +247,28 @@
       let hotbarItems = ALL_BLOCKS.slice(0, 10);
       let activeSlotIndex = 0;
       let selectedColor = hotbarItems[0].color;
-      let draggedBlockIndex = null;
 
-      // Three.js Scene Setup
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87ceeb);
 
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      const PLAYER_HEIGHT = 1.6;
-      const PLAYER_RADIUS = 0.3;
+      
+      const NORMAL_HEIGHT = 1.6;
+      const CROUCH_HEIGHT = 1.0;
+      let playerHeight = NORMAL_HEIGHT;
 
       let yVelocity = 0;
       const GRAVITY = -28;
       const JUMP_FORCE = 10.5;
       let canJump = false;
       let isFlying = false;
+      let isCrouching = false;
+
+      let keysPressed = {};
+      let lastSpaceTime = 0;
 
       function spawnPlayer() {
-        camera.position.set(0, PLAYER_HEIGHT + 1, 0);
+        camera.position.set(0, playerHeight + 1, 0);
         camera.rotation.set(0, 0, 0);
         yVelocity = 0;
       }
@@ -256,8 +277,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
       const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
       dirLight.position.set(20, 40, 20);
       scene.add(dirLight);
@@ -289,7 +309,7 @@
       highlightBox.visible = false;
       scene.add(highlightBox);
 
-      // DOM Elements
+      // UI Elements
       const hotbarEl = document.getElementById('hotbar');
       const fullInvModal = document.getElementById('full-inventory');
       const invGrid = document.getElementById('inventory-grid');
@@ -297,88 +317,51 @@
       const closeInvBtn = document.getElementById('close-inv-btn');
       const helpIconBtn = document.getElementById('help-icon-btn');
       const infoModal = document.getElementById('info-modal');
-      const invInfoBtn = document.getElementById('inv-info-btn');
       const saveBtn = document.getElementById('save-btn');
       const loadBtn = document.getElementById('load-btn');
       const toastEl = document.getElementById('toast');
 
-      function showToast(message) {
-        toastEl.innerText = message;
+      function showToast(msg) {
+        toastEl.innerText = msg;
         toastEl.style.display = 'block';
         setTimeout(() => { toastEl.style.display = 'none'; }, 2500);
       }
 
-      // 🔥 MUKH NGEAR: SAVE & LOAD
       function saveWorld() {
         const blocksData = objects.map(obj => ({
-          x: obj.position.x,
-          y: obj.position.y,
-          z: obj.position.z,
+          x: obj.position.x, y: obj.position.y, z: obj.position.z,
           color: obj.material.color.getHex()
         }));
-
-        const playerData = {
-          posX: camera.position.x,
-          posY: camera.position.y,
-          posZ: camera.position.z,
-          yaw: yaw,
-          pitch: pitch
-        };
-
-        const saveData = {
-          blocks: blocksData,
-          player: playerData
-        };
-
-        localStorage.setItem('minecraft_clone_save', JSON.stringify(saveData));
-        showToast('💾 បានរក្សាទុកហ្គេមដោយជោគជ័យ!');
+        const playerData = { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch };
+        localStorage.setItem('minecraft_clone_save', JSON.stringify({ blocks: blocksData, player: playerData }));
+        showToast('💾 បានរក្សាទុកហ្គេម!');
       }
 
       function loadWorld() {
         const savedData = localStorage.getItem('minecraft_clone_save');
-        if (!savedData) {
-          showToast('⚠️ ពុំមានទិន្នន័យត្រូវបានរក្សាទុកទេ!');
-          return;
-        }
-
+        if (!savedData) return showToast('⚠️ គ្មានទិន្នន័យរក្សាទុក!');
         const parsed = JSON.parse(savedData);
-
-        // Clear Existing Blocks
         objects.forEach(obj => scene.remove(obj));
         objects = [];
-
-        // Load Saved Blocks
         parsed.blocks.forEach(b => {
-          const mat = new THREE.MeshLambertMaterial({ color: b.color });
-          const voxel = new THREE.Mesh(blockGeometry, mat);
+          const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: b.color }));
           voxel.position.set(b.x, b.y, b.z);
           scene.add(voxel);
           objects.push(voxel);
         });
-
-        // Load Player Pos
         if (parsed.player) {
           camera.position.set(parsed.player.posX, parsed.player.posY, parsed.player.posZ);
-          yaw = parsed.player.yaw || 0;
-          pitch = parsed.player.pitch || 0;
+          yaw = parsed.player.yaw || 0; pitch = parsed.player.pitch || 0;
         }
-
-        showToast('📂 បានទាញយកទិន្នន័យមកលេងវិញរចរួចរាល់!');
+        showToast('📂 បានទាញយកទិន្នន័យ!');
       }
 
-      saveBtn.addEventListener('click', (e) => { e.stopPropagation(); saveWorld(); });
-      loadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadWorld(); });
+      saveBtn.onclick = saveWorld;
+      loadBtn.onclick = loadWorld;
 
-      function toggleInfoModal() {
-        if (infoModal.style.display === 'none' || infoModal.style.display === '') {
-          infoModal.style.display = 'block';
-        } else {
-          infoModal.style.display = 'none';
-        }
-      }
-
-      helpIconBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInfoModal(); });
-      invInfoBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInfoModal(); });
+      helpIconBtn.onclick = () => {
+        infoModal.style.display = (infoModal.style.display === 'none' || !infoModal.style.display) ? 'block' : 'none';
+      };
 
       function renderHotbar() {
         hotbarEl.innerHTML = '';
@@ -387,19 +370,7 @@
           slot.className = `slot ${index === activeSlotIndex ? 'active' : ''}`;
           slot.style.background = '#' + item.color.toString(16).padStart(6, '0');
           slot.innerText = index === 9 ? '0' : (index + 1);
-
-          slot.addEventListener('click', () => selectSlot(index));
-          slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
-          slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
-          slot.addEventListener('drop', (e) => {
-            e.preventDefault();
-            slot.classList.remove('drag-over');
-            if (draggedBlockIndex !== null) {
-              hotbarItems[index] = ALL_BLOCKS[draggedBlockIndex];
-              selectSlot(index);
-            }
-          });
-
+          slot.onclick = () => selectSlot(index);
           hotbarEl.appendChild(slot);
         });
         selectedColor = hotbarItems[activeSlotIndex].color;
@@ -412,65 +383,47 @@
         }
       }
 
-      window.addEventListener('wheel', (e) => {
-        if (isInvOpen) return;
-        if (e.deltaY > 0) activeSlotIndex = (activeSlotIndex + 1) % 10;
-        else if (e.deltaY < 0) activeSlotIndex = (activeSlotIndex - 1 + 10) % 10;
-        selectSlot(activeSlotIndex);
-      });
-
       function renderFullInventory() {
         invGrid.innerHTML = '';
-        ALL_BLOCKS.forEach((block, index) => {
+        ALL_BLOCKS.forEach((block) => {
           const card = document.createElement('div');
           card.className = 'item-card';
-          card.draggable = true;
-
           const colorHex = '#' + block.color.toString(16).padStart(6, '0');
-          card.innerHTML = `
-            <div class="item-color" style="background: ${colorHex}"></div>
-            <div class="item-name">${block.name}</div>
-          `;
-
-          card.addEventListener('click', () => {
+          card.innerHTML = `<div class="item-color" style="background: ${colorHex}"></div><div class="item-name">${block.name}</div>`;
+          card.onclick = () => {
             hotbarItems[activeSlotIndex] = block;
             renderHotbar();
-          });
-
-          card.addEventListener('dragstart', () => { draggedBlockIndex = index; });
-          card.addEventListener('dragend', () => { draggedBlockIndex = null; });
-
+          };
           invGrid.appendChild(card);
         });
       }
 
       let isInvOpen = false;
-      function toggleInventory(forceState) {
-        isInvOpen = forceState !== undefined ? forceState : !isInvOpen;
-        if (isInvOpen) {
-          fullInvModal.style.display = 'flex';
-          document.exitPointerLock();
-        } else {
-          fullInvModal.style.display = 'none';
-          infoModal.style.display = 'none';
-        }
+      function toggleInventory(state) {
+        isInvOpen = state !== undefined ? state : !isInvOpen;
+        fullInvModal.style.display = isInvOpen ? 'flex' : 'none';
+        if (isInvOpen) document.exitPointerLock?.();
       }
 
-      moreBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInventory(true); });
-      closeInvBtn.addEventListener('click', () => toggleInventory(false));
+      moreBtn.onclick = () => toggleInventory(true);
+      closeInvBtn.onclick = () => toggleInventory(false);
 
       renderHotbar();
       renderFullInventory();
 
-      // Controls & Locks
-      let isLocked = false;
+      // Controls State
       let pitch = 0, yaw = 0;
+      let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+      let isLocked = false;
 
       document.body.addEventListener('click', (e) => {
-        if (e.target.closest('#hotbar-container') || e.target.closest('#full-inventory') || e.target.closest('#top-left-controls') || e.target.closest('#info-modal')) return;
-        
-        infoModal.style.display = 'none';
-        if (!isInvOpen) document.body.requestPointerLock();
+        if (e.target.closest('#top-left-controls') || e.target.closest('#hotbar-container') || 
+            e.target.closest('#full-inventory') || e.target.closest('#joystick-zone') || 
+            e.target.closest('#mobile-action-btns') || e.target.closest('#info-modal')) return;
+
+        if (!isInvOpen && !('ontouchstart' in window)) {
+          document.body.requestPointerLock();
+        }
       });
 
       document.addEventListener('pointerlockchange', () => {
@@ -482,134 +435,265 @@
         yaw -= e.movementX * 0.002;
         pitch -= e.movementY * 0.002;
         pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
-
         camera.rotation.order = "YXZ";
         camera.rotation.y = yaw;
         camera.rotation.x = pitch;
       });
 
-      let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-      let moveUp = false, moveDown = false;
-      let lastSpaceTime = 0;
+      // 🔥 MOUSE WHEEL SCROLL (ប្ដូរ INVENTORY SLOT)
+      window.addEventListener('wheel', (e) => {
+        if (isInvOpen) return;
+        if (e.deltaY > 0) {
+          selectSlot((activeSlotIndex + 1) % 10);
+        } else if (e.deltaY < 0) {
+          selectSlot((activeSlotIndex - 1 + 10) % 10);
+        }
+      });
 
+      // KEYBOARD INPUTS
       document.addEventListener('keydown', (e) => {
-        if (e.code === 'Tab' || e.code === 'KeyE') {
+        if (e.code === 'CapsLock') {
           e.preventDefault();
-          toggleInventory();
+          if (isLocked) {
+            document.exitPointerLock();
+            showToast('🖱️ បង្ហាញ Mouse Cursor');
+          } else {
+            document.body.requestPointerLock();
+            showToast('🎮 បិទ Mouse Cursor (ចូលលេង)');
+          }
           return;
         }
 
+        if (e.code === 'Tab' || e.code === 'KeyE') { e.preventDefault(); toggleInventory(); return; }
         if (isInvOpen) return;
+
+        // 🔥 ចុចលេខ 1-9 និង 0 ដើម្បីប្ដូរ INVENTORY SLOT
+        if (e.code.startsWith('Digit')) {
+          const num = parseInt(e.code.replace('Digit', ''));
+          if (num >= 1 && num <= 9) {
+            selectSlot(num - 1);
+          } else if (num === 0) {
+            selectSlot(9);
+          }
+          return;
+        }
+
+        keysPressed[e.code] = true;
 
         switch (e.code) {
           case 'KeyW': moveForward = true; break;
           case 'KeyS': moveBackward = true; break;
           case 'KeyA': moveLeft = true; break;
           case 'KeyD': moveRight = true; break;
+          
+          case 'ShiftLeft':
+          case 'ShiftRight':
+            if (!isFlying && !isCrouching) {
+              isCrouching = true;
+              playerHeight = CROUCH_HEIGHT;
+              camera.position.y -= (NORMAL_HEIGHT - CROUCH_HEIGHT);
+            }
+            break;
+
           case 'Space':
-            const now = performance.now();
-            if (now - lastSpaceTime < 280) {
+            e.preventDefault();
+            const currentTime = performance.now();
+            if (currentTime - lastSpaceTime < 280) {
               isFlying = !isFlying;
               yVelocity = 0;
-            } else {
-              if (!isFlying && canJump) {
-                yVelocity = JUMP_FORCE;
-                canJump = false;
+              if (isCrouching) {
+                isCrouching = false;
+                playerHeight = NORMAL_HEIGHT;
               }
+              showToast(isFlying ? '✈ របៀបហោះ៖ បើក' : '🚶 របៀបដើរ');
+            } else if (!isFlying && canJump) {
+              yVelocity = JUMP_FORCE;
+              canJump = false;
             }
-            lastSpaceTime = now;
-            if (isFlying) moveUp = true;
+            lastSpaceTime = currentTime;
             break;
-          case 'ShiftLeft':
-          case 'ShiftRight': if (isFlying) moveDown = true; break;
-          case 'Digit1': selectSlot(0); break;
-          case 'Digit2': selectSlot(1); break;
-          case 'Digit3': selectSlot(2); break;
-          case 'Digit4': selectSlot(3); break;
-          case 'Digit5': selectSlot(4); break;
-          case 'Digit6': selectSlot(5); break;
-          case 'Digit7': selectSlot(6); break;
-          case 'Digit8': selectSlot(7); break;
-          case 'Digit9': selectSlot(8); break;
-          case 'Digit0': selectSlot(9); break;
         }
       });
 
       document.addEventListener('keyup', (e) => {
+        keysPressed[e.code] = false;
+
         switch (e.code) {
           case 'KeyW': moveForward = false; break;
           case 'KeyS': moveBackward = false; break;
           case 'KeyA': moveLeft = false; break;
           case 'KeyD': moveRight = false; break;
-          case 'Space': moveUp = false; break;
+
           case 'ShiftLeft':
-          case 'ShiftRight': moveDown = false; break;
+          case 'ShiftRight':
+            if (isCrouching) {
+              isCrouching = false;
+              camera.position.y += (NORMAL_HEIGHT - CROUCH_HEIGHT);
+              playerHeight = NORMAL_HEIGHT;
+            }
+            break;
         }
       });
 
-      function checkCollisionAt(pos) {
-        if (isFlying) return false;
-        const pBox = new THREE.Box3(
-          new THREE.Vector3(pos.x - PLAYER_RADIUS, pos.y - PLAYER_HEIGHT + 0.5, pos.z - PLAYER_RADIUS),
-          new THREE.Vector3(pos.x + PLAYER_RADIUS, pos.y - 0.1, pos.z + PLAYER_RADIUS)
-        );
-
-        for (let obj of objects) {
-          if (pBox.intersectsBox(new THREE.Box3().setFromObject(obj))) return true;
-        }
-        return false;
-      }
-
-      // Raycasting
+      // Raycaster & Actions
       const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2(0, 0);
+      const mouseCenter = new THREE.Vector2(0, 0);
 
-      window.addEventListener('mousedown', (e) => {
-        if (!isLocked || isInvOpen) return;
-
-        raycaster.setFromCamera(mouse, camera);
+      function performAction(type) {
+        raycaster.setFromCamera(mouseCenter, camera);
         const intersects = raycaster.intersectObjects(objects);
-
         if (intersects.length > 0) {
           const intersect = intersects[0];
-
-          if (e.button === 0) {
+          if (type === 'break') {
             scene.remove(intersect.object);
             objects.splice(objects.indexOf(intersect.object), 1);
-            highlightBox.visible = false;
-          } else if (e.button === 1) {
-            e.preventDefault();
-            const targetedColor = intersect.object.material.color.getHex();
-            const existingSlotIndex = hotbarItems.findIndex(item => item.color === targetedColor);
-
-            if (existingSlotIndex !== -1) {
-              selectSlot(existingSlotIndex);
-            } else {
-              const matchedBlock = ALL_BLOCKS.find(b => b.color === targetedColor) || { name: 'ប្លុកចម្លង', color: targetedColor };
-              hotbarItems[activeSlotIndex] = matchedBlock;
-              renderHotbar();
-            }
-          } else if (e.button === 2) {
+          } else if (type === 'build') {
             const targetPos = new THREE.Vector3().copy(intersect.object.position).add(intersect.face.normal);
+            const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: selectedColor }));
+            voxel.position.copy(targetPos);
+            scene.add(voxel);
+            objects.push(voxel);
+          } else if (type === 'copy') {
+            const blockColor = intersect.object.material.color.getHex();
+            const foundBlock = ALL_BLOCKS.find(b => b.color === blockColor) || { name: 'Block', color: blockColor };
+            hotbarItems[activeSlotIndex] = foundBlock;
+            renderHotbar();
+            showToast('🎨 បាន Copy ពណ៌ Block!');
+          }
+        }
+      }
 
-            const blockBox = new THREE.Box3(
-              new THREE.Vector3(targetPos.x - 0.5, targetPos.y - 0.5, targetPos.z - 0.5),
-              new THREE.Vector3(targetPos.x + 0.5, targetPos.y + 0.5, targetPos.z + 0.5)
-            );
-            const pBox = new THREE.Box3(
-              new THREE.Vector3(camera.position.x - PLAYER_RADIUS, camera.position.y - PLAYER_HEIGHT, camera.position.z - PLAYER_RADIUS),
-              new THREE.Vector3(camera.position.x + PLAYER_RADIUS, camera.position.y, camera.position.z + PLAYER_RADIUS)
-            );
+      // 🔥 MOUSE CLICK ACTIONS (0 = BREAK, 1 = MIDDLE SCROLL COPY, 2 = BUILD)
+      window.addEventListener('mousedown', (e) => {
+        if (!isLocked || isInvOpen) return;
+        if (e.button === 0) performAction('break');
+        else if (e.button === 1) {
+          e.preventDefault();
+          performAction('copy'); // ចុច Scroll ដើម្បី Copy ពណ៌
+        }
+        else if (e.button === 2) performAction('build');
+      });
 
-            if (!blockBox.intersectsBox(pBox)) {
-              const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: selectedColor }));
-              voxel.position.copy(targetPos);
-              scene.add(voxel);
-              objects.push(voxel);
+      // TOUCH CONTROLS
+      const joystickZone = document.getElementById('joystick-zone');
+      const joystickKnob = document.getElementById('joystick-knob');
+      let joystickTouchId = null;
+      let lookTouchId = null;
+      let lastTouchX = 0, lastTouchY = 0;
+
+      let touchTimer = null;
+      let isHoldBreak = false;
+      let touchStartX = 0, touchStartY = 0;
+
+      joystickZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        updateJoystick(touch);
+      });
+
+      window.addEventListener('touchstart', (e) => {
+        if (isInvOpen) return;
+
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          clearTimeout(touchTimer);
+          isHoldBreak = false;
+          performAction('copy');
+          return;
+        }
+
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+
+          if (touch.clientX > window.innerWidth / 2 && lookTouchId === null && !e.target.closest('#mobile-action-btns') && !e.target.closest('#top-left-controls') && !e.target.closest('#hotbar-container')) {
+            lookTouchId = touch.identifier;
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+
+            isHoldBreak = false;
+            touchTimer = setTimeout(() => {
+              isHoldBreak = true;
+              performAction('break');
+              if (navigator.vibrate) navigator.vibrate(50);
+            }, 400);
+          }
+        }
+      });
+
+      window.addEventListener('touchmove', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === joystickTouchId) {
+            updateJoystick(touch);
+          } else if (touch.identifier === lookTouchId) {
+            const dx = touch.clientX - lastTouchX;
+            const dy = touch.clientY - lastTouchY;
+
+            if (Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) > 15) {
+              clearTimeout(touchTimer);
+            }
+
+            yaw -= dx * 0.005;
+            pitch -= dy * 0.005;
+            pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
+            camera.rotation.order = "YXZ";
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+          }
+        }
+      });
+
+      window.addEventListener('touchend', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          if (touch.identifier === joystickTouchId) {
+            joystickTouchId = null;
+            joystickKnob.style.top = '30px';
+            joystickKnob.style.left = '30px';
+            moveForward = moveBackward = moveLeft = moveRight = false;
+          } else if (touch.identifier === lookTouchId) {
+            lookTouchId = null;
+            clearTimeout(touchTimer);
+            if (!isHoldBreak && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
+              performAction('build');
             }
           }
         }
       });
+
+      function updateJoystick(touch) {
+        const rect = joystickZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        let dx = touch.clientX - centerX;
+        let dy = touch.clientY - centerY;
+        const dist = Math.hypot(dx, dy);
+        const maxDist = 35;
+        if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+        joystickKnob.style.left = (30 + dx) + 'px';
+        joystickKnob.style.top = (30 + dy) + 'px';
+
+        moveForward = dy < -10;
+        moveBackward = dy > 10;
+        moveLeft = dx < -10;
+        moveRight = dx > 10;
+      }
+
+      document.getElementById('m-btn-jump').onclick = () => {
+        if (isFlying) camera.position.y += 1.5;
+        else if (canJump) { yVelocity = JUMP_FORCE; canJump = false; }
+      };
+
+      document.getElementById('m-btn-fly').onclick = () => {
+        isFlying = !isFlying;
+        yVelocity = 0;
+        showToast(isFlying ? '✈ របៀបហោះ៖ បើក' : '🚶 របៀបដើរ');
+      };
 
       window.addEventListener('contextmenu', e => e.preventDefault());
       window.addEventListener('resize', () => {
@@ -618,63 +702,68 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // Main Loop
       const clock = new THREE.Clock();
       function animate() {
         requestAnimationFrame(animate);
-
         const delta = Math.min(clock.getDelta(), 0.1);
-        const speed = isFlying ? 10 : 5;
+        
+        let speed = isFlying ? 10 : (isCrouching ? 2.5 : 5);
 
-        if (isLocked && !isInvOpen) {
+        if (!isInvOpen) {
           const front = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
           const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-
           const moveDir = new THREE.Vector3();
+
           if (moveForward) moveDir.add(front);
           if (moveBackward) moveDir.sub(front);
           if (moveRight) moveDir.add(side);
           if (moveLeft) moveDir.sub(side);
           moveDir.normalize();
 
-          const oldPos = camera.position.clone();
           camera.position.x += moveDir.x * speed * delta;
           camera.position.z += moveDir.z * speed * delta;
 
-          if (checkCollisionAt(camera.position)) {
-            camera.position.x = oldPos.x;
-            camera.position.z = oldPos.z;
-          }
-
           if (isFlying) {
-            if (moveUp) camera.position.y += speed * delta;
-            if (moveDown) camera.position.y -= speed * delta;
+            const flySpeed = 8.0;
+            if (keysPressed['Space']) {
+              camera.position.y += flySpeed * delta;
+            }
+            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
+              camera.position.y -= flySpeed * delta;
+            }
+
+            const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, playerHeight + 0.1);
+            const hits = downRay.intersectObjects(objects);
+
+            if (hits.length > 0) {
+              camera.position.y = hits[0].point.y + playerHeight;
+              isFlying = false;
+              showToast('🚶 ដល់ដី - ត្រឡប់ទៅរបៀបដើរ');
+            }
           } else {
             yVelocity += GRAVITY * delta;
             camera.position.y += yVelocity * delta;
 
-            const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, PLAYER_HEIGHT + 0.2);
+            const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, playerHeight + 0.2);
             const hits = downRay.intersectObjects(objects);
 
             if (hits.length > 0 && yVelocity <= 0) {
-              camera.position.y = hits[0].point.y + PLAYER_HEIGHT;
-              yVelocity = 0;
+              camera.position.y = hits[0].point.y + playerHeight;
+              yVelocity = 0; 
               canJump = true;
-            } else {
-              canJump = false;
+            } else { 
+              canJump = false; 
             }
 
             if (camera.position.y < -30) spawnPlayer();
           }
 
-          raycaster.setFromCamera(mouse, camera);
+          raycaster.setFromCamera(mouseCenter, camera);
           const intersects = raycaster.intersectObjects(objects);
           if (intersects.length > 0) {
             highlightBox.position.copy(intersects[0].object.position);
             highlightBox.visible = true;
-          } else {
-            highlightBox.visible = false;
-          }
+          } else { highlightBox.visible = false; }
         }
 
         renderer.render(scene, camera);
