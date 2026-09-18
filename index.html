@@ -668,6 +668,7 @@
 
       menuBackBtn.onclick = () => {
         if (isHost && currentRoomId) {
+          autoSaveHostWorld();
           broadcastNetData({ type: 'HOST_CLOSED' });
         }
         clearNetworkSession();
@@ -823,7 +824,6 @@
         }
       };
 
-      // --- ប៊ូតុង Host Room យកពី Save Local ---
       document.getElementById('btn-host-from-local').onclick = () => {
         document.getElementById('multiplayer-modal').style.display = 'none';
         const container = document.getElementById('host-local-list-container');
@@ -868,7 +868,6 @@
 
         document.getElementById('host-local-modal').style.display = 'none';
         
-        // ផ្ទុកទិន្នន័យពិភពលោក (World) និងទីតាំងចូលហ្គេម
         loadWorldDataFromSave(name, false);
         const roomIdToHost = data.targetRoomId || name;
         
@@ -896,6 +895,7 @@
           document.getElementById('room-status-badge').style.display = 'block';
           document.getElementById('room-status-badge').innerText = `👑 ROOM: ${id}`;
           showToast(`✅ បានបង្កើត Room: ${id}`);
+          autoSaveHostWorld(); // Save ភ្លាមៗពេលបង្កើត Room ស្រេច
         });
 
         peer.on('connection', (conn) => {
@@ -1048,6 +1048,8 @@
         if (sync) {
           broadcastNetData({ type: 'BUILD', x, y, z, color: colorHex });
           if (isHost) autoSaveHostWorld();
+        } else if (isHost && currentRoomId) {
+          autoSaveHostWorld();
         }
       }
 
@@ -1059,18 +1061,22 @@
           if (sync) {
             broadcastNetData({ type: 'BREAK', x, y, z });
             if (isHost) autoSaveHostWorld();
+          } else if (isHost && currentRoomId) {
+            autoSaveHostWorld();
           }
         }
       }
 
       function autoSaveHostWorld() {
-        if (!currentRoomId) return;
+        if (!currentRoomId || !isHost) return;
         const saveName = `Room_${currentRoomId}`;
         const worldData = {
           saveName: saveName,
           targetRoomId: currentRoomId,
           isOriginalHost: true,
           player: { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch },
+          hotbar: hotbarItems.map(item => item.id),
+          activeSlotIndex: activeSlotIndex,
           blocks: objects.map(o => ({
             x: o.position.x, y: o.position.y, z: o.position.z,
             color: o.material.color.getHex()
@@ -1080,6 +1086,19 @@
         localSaves[saveName] = worldData;
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
       }
+
+      // កែសម្រួលបន្ថែម៖ Auto save ពេលទូរស័ព្ទបិទផ្ទាំង ឬប្ដូរ Tab (Mobile Safe Guard)
+      window.addEventListener('beforeunload', () => {
+        if (isHost && currentRoomId) {
+          autoSaveHostWorld();
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && isHost && currentRoomId) {
+          autoSaveHostWorld();
+        }
+      });
 
       function saveWorldLocal(saveName) {
         const worldData = {
