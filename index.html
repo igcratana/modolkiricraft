@@ -539,6 +539,10 @@
         nameSprite.position.set(0, 1.8, 0);
         group.add(nameSprite);
 
+        // រក្សាទុក Target Coordinates សម្រាប់ Interpolation (Smooth Movement)
+        group.targetPosition = new THREE.Vector3();
+        group.targetYaw = 0;
+
         return group;
       }
 
@@ -630,7 +634,7 @@
         document.exitPointerLock?.();
       };
 
-      // ONLINE MULTIPLAYER (WEBRTC PEERJS) LOGIC
+      // ONLINE MULTIPLAYER (WEBRTC PEERJS) LOGIC - OPTIMIZED FOR SMOOTHNESS
       document.getElementById('btn-multiplayer').onclick = () => {
         document.getElementById('multiplayer-modal').style.display = 'flex';
       };
@@ -656,7 +660,7 @@
 
       function setupHostRoom(roomId) {
         isHost = true;
-        peer = new Peer(roomId);
+        peer = new Peer(roomId, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
         peer.on('open', (id) => {
           currentRoomId = id;
@@ -690,10 +694,10 @@
 
       function joinHostRoom(targetRoomId) {
         isHost = false;
-        peer = new Peer();
+        peer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
         peer.on('open', () => {
-          hostConn = peer.connect(targetRoomId);
+          hostConn = peer.connect(targetRoomId, { reliable: false }); // Reliable false សម្រាប់ចលនារលូនគ្មាន Delay
 
           hostConn.on('open', () => {
             currentRoomId = targetRoomId;
@@ -734,11 +738,15 @@
           let playerMesh = otherPlayers[data.id];
           if (!playerMesh) {
             playerMesh = createPlayerMesh(data.name);
+            playerMesh.position.set(data.x, data.y - playerHeight, data.z);
+            playerMesh.rotation.y = data.yaw;
             scene.add(playerMesh);
             otherPlayers[data.id] = playerMesh;
           }
-          playerMesh.position.set(data.x, data.y - playerHeight, data.z);
-          playerMesh.rotation.y = data.yaw;
+
+          // កត់ត្រាទីតាំង Target ដើម្បីធ្វើការ Lerp យ៉ាងរលូន
+          playerMesh.targetPosition.set(data.x, data.y - playerHeight, data.z);
+          playerMesh.targetYaw = data.yaw;
 
           if (isHost) broadcastNetData(data, conn);
         } else if (data.type === 'PLAYER_LEAVE') {
@@ -1318,9 +1326,24 @@
             highlightBox.visible = true;
           } else { highlightBox.visible = false; }
 
-          // ផ្ញើទិន្នន័យទីតាំង, ឈ្មោះ, និងមុំរង្វិលទៅកាន់អ្នកលេងផ្សេងទៀតរៀងរាល់ 50ms
+          // ធ្វើឱ្យចលនាអ្នកលេងផ្សេងទៀត Smooth តាមរយៈ Interpolation (Lerp & Rotation Slerp)
+          Object.keys(otherPlayers).forEach(id => {
+            const playerMesh = otherPlayers[id];
+            if (playerMesh && playerMesh.targetPosition) {
+              // Smooth Position (Lerp factor = 0.25)
+              playerMesh.position.lerp(playerMesh.targetPosition, 0.25);
+
+              // Smooth Rotation Yaw
+              let diffYaw = playerMesh.targetYaw - playerMesh.rotation.y;
+              while (diffYaw < -Math.PI) diffYaw += Math.PI * 2;
+              while (diffYaw > Math.PI) diffYaw -= Math.PI * 2;
+              playerMesh.rotation.y += diffYaw * 0.25;
+            }
+          });
+
+          // ផ្ញើទិន្នន័យទីតាំង, ឈ្មោះ, និងមុំរង្វិលទៅកាន់អ្នកលេងផ្សេងទៀតរៀងរាល់ ~33ms (30Hz rate សម្រាប់ Smooth Network)
           const now = performance.now();
-          if (peer && now - lastNetworkSend > 50) {
+          if (peer && now - lastNetworkSend > 33) {
             const myId = peer.id;
             if (myId) {
               broadcastNetData({
