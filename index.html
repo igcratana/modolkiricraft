@@ -2,7 +2,7 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <title>3D Minecraft Clone - Drag & Drop Inventory</title>
+  <title>3D Minecraft Clone - Keo Rathana</title>
   <style>
     body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; user-select: none; }
     
@@ -14,14 +14,38 @@
       color: white; font-size: 20px;
       pointer-events: none; z-index: 10;
     }
-    
-    #instructions {
+
+    /* ប៊ូតុងបញ្ជាលើអេក្រង់ (Save, Load, Help) */
+    #top-left-controls {
       position: absolute;
-      top: 10px; left: 10px;
-      color: white; background: rgba(0,0,0,0.7);
-      padding: 10px; border-radius: 5px; z-index: 10;
-      font-size: 13px; line-height: 1.5;
+      top: 15px; left: 15px;
+      display: flex; gap: 8px;
+      z-index: 15;
     }
+
+    .btn-ui {
+      background: rgba(0, 0, 0, 0.75);
+      border: 2px solid #888; border-radius: 6px;
+      color: white; font-weight: bold; font-size: 13px;
+      padding: 6px 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: 0.2s;
+    }
+    .btn-ui:hover { background: #555; border-color: #fff; transform: scale(1.03); }
+
+    /* ផ្ទាំងព័ត៌មានណែនាំ */
+    #info-modal {
+      position: absolute;
+      top: 60px; left: 15px;
+      background: rgba(15, 15, 15, 0.95);
+      border: 2px solid #aaa; border-radius: 8px;
+      padding: 12px 16px; color: white;
+      font-size: 13px; line-height: 1.6;
+      display: none; z-index: 25;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+      max-width: 280px;
+    }
+    #info-modal b { color: #ffca28; }
 
     /* Hotbar Style */
     #hotbar-container {
@@ -45,15 +69,8 @@
       position: relative; transition: border-color 0.15s;
     }
     
-    .slot.active {
-      border-color: #ffffff;
-      box-shadow: 0 0 10px #ffffff;
-    }
-
-    .slot.drag-over {
-      border-color: #00ff00 !important;
-      background-color: rgba(0, 255, 0, 0.2) !important;
-    }
+    .slot.active { border-color: #ffffff; box-shadow: 0 0 10px #ffffff; }
+    .slot.drag-over { border-color: #00ff00 !important; background-color: rgba(0, 255, 0, 0.2) !important; }
 
     #more-btn {
       width: 44px; height: 44px;
@@ -78,56 +95,89 @@
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }
 
-    #full-inventory h3 { margin: 0 0 5px 0; text-align: center; }
-    #full-inventory p { margin: 0 0 10px 0; text-align: center; font-size: 12px; color: #aaa; }
+    .inv-header {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .inv-header h3 { margin: 0; }
+    
+    #inv-info-btn {
+      background: #444; border: 1px solid #aaa; color: #fff;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    #inv-info-btn:hover { background: #666; }
 
     .grid-container {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px; max-height: 300px;
-      overflow-y: auto; padding: 5px;
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 10px; max-height: 280px; overflow-y: auto; padding: 5px;
     }
 
     .item-card {
       background: #333; border: 2px solid #555;
       border-radius: 6px; padding: 8px;
       display: flex; flex-direction: column;
-      align-items: center; cursor: grab;
-      transition: 0.2s;
+      align-items: center; cursor: grab; transition: 0.2s;
     }
     .item-card:active { cursor: grabbing; }
     .item-card:hover { border-color: #fff; background: #555; }
     
-    .item-color {
-      width: 32px; height: 32px;
-      border-radius: 4px; border: 1px solid #000;
-      margin-bottom: 4px; pointer-events: none;
-    }
+    .item-color { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #000; margin-bottom: 4px; pointer-events: none; }
     .item-name { font-size: 11px; text-align: center; pointer-events: none; }
+
+    /* Copyright Footer Style */
+    .inv-copyright {
+      text-align: center;
+      font-size: 12px;
+      color: #ffca28;
+      font-weight: bold;
+      border-top: 1px solid #444;
+      padding-top: 8px;
+      margin-top: 4px;
+    }
 
     #close-inv-btn {
       align-self: center; padding: 6px 25px;
       background: #aa3333; border: none;
       color: white; border-radius: 5px;
-      cursor: pointer; font-weight: bold; margin-top: 5px;
+      cursor: pointer; font-weight: bold; margin-top: 2px;
     }
     #close-inv-btn:hover { background: #ff4444; }
+
+    /* Toast Notification for Save/Load */
+    #toast {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: rgba(40, 167, 69, 0.9);
+      color: white; padding: 10px 18px;
+      border-radius: 6px; font-weight: bold;
+      display: none; z-index: 30;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
   </style>
 </head>
 <body>
 
   <div id="crosshair">+</div>
+  <div id="toast">បានរក្សាទុកដោយជោគជ័យ!</div>
   
-  <div id="instructions">
-    <b>របៀបបញ្ជា៖</b><br>
-    - ចុចលើអេក្រង់ដើម្បីបញ្ជាមើលជុំវិញ<br>
-    - <b>W, A, S, D</b> : ដើរ | <b>Space</b> : លោត<br>
-    - <b>1 ដល់ 0</b> : ជ្រើសរើស Hotbar Slot<br>
-    - <b>Tab</b> ឬ <b>E</b> ឬ ចុចប៊ូតុង <b>+</b> : បើក/បិទ Inventory<br>
-    - ចុចកណ្ដុរឆ្វេង : បំផ្លាញ | ចុចកណ្ដុរស្តាំ : ដាក់ Block
+  <!-- ប៊ូតុងបញ្ជាខាងលើ (Save, Load, Help) -->
+  <div id="top-left-controls">
+    <button class="btn-ui" id="save-btn" title="រក្សាទុកហ្គេម">💾 Save</button>
+    <button class="btn-ui" id="load-btn" title="ទាញយកហ្គេមមកលេងវិញ">📂 Load</button>
+    <button class="btn-ui" id="help-icon-btn" title="មើលរបៀបបញ្ជា">❓</button>
   </div>
 
-  <!-- Hotbar 10 Slots + Plus Button -->
+  <!-- ផ្ទាំងព័ត៌មានណែនាំ -->
+  <div id="info-modal">
+    <b>របៀបបញ្ជា៖</b><br>
+    - <b>W, A, S, D</b> : ដើរ | <b>Space</b> : លោត<br>
+    - <b>Space 2ដង</b> : ហោះ/ឈប់ហោះ<br>
+    - <b>Scroll Mouse</b> : ប្ដូរ Slot លើ Hotbar<br>
+    - <b>Middle Click</b> : Copy Block (Pick Block)<br>
+    - <b>Tab / E</b> : បើក/បិទ Inventory<br>
+    - <b>ចុចឆ្វេង</b> : បំផ្លាញ | <b>ចុចស្តាំ</b> : ដាក់ Block
+  </div>
+
+  <!-- Hotbar -->
   <div id="hotbar-container">
     <div id="hotbar" style="display:flex; gap:6px;"></div>
     <div id="more-btn" title="បើក Inventory (Tab / E)">+</div>
@@ -135,9 +185,19 @@
 
   <!-- Full Inventory Modal -->
   <div id="full-inventory">
-    <h3>Inventory ប្លុកធម្មជាតិពេញលេញ</h3>
-    <p>ចុចលើ Block ដើម្បីប្ដូរ Slot ដើម ឬ **ចាប់ទាញ (Drag & Drop)** ចូល Slot ណាមួយក៏បាន</p>
+    <div class="inv-header">
+      <h3>Inventory ប្លុកធម្មជាតិ</h3>
+      <button id="inv-info-btn">❓ របៀបបញ្ជា</button>
+    </div>
+    <p style="margin:0; font-size:12px; color:#aaa;">ចុចលើ Block ដើម្បីប្ដូរ Slot ឬ Drag & Drop ចូល Slot ណាមួយក៏បាន</p>
+    
     <div class="grid-container" id="inventory-grid"></div>
+
+    <!-- អត្ថបទ Copyright -->
+    <div class="inv-copyright">
+      Copyright © រក្សាសិទ្ធិគ្រប់យ៉ាងដោយ លោក កែវ រតនា ហៅ ប្រូខួច
+    </div>
+
     <button id="close-inv-btn">បិទ (Close)</button>
   </div>
 
@@ -145,7 +205,6 @@
 
   <script>
     window.addEventListener('DOMContentLoaded', () => {
-      // 1. បញ្ជី Block ធម្មជាតិ
       const ALL_BLOCKS = [
         { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
         { id: 1, name: 'ដី (Dirt)', color: 0x8b5a2b },
@@ -173,7 +232,7 @@
       let selectedColor = hotbarItems[0].color;
       let draggedBlockIndex = null;
 
-      // 2. Three.js Scene Setup
+      // Three.js Scene Setup
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87ceeb);
 
@@ -203,35 +262,123 @@
       dirLight.position.set(20, 40, 20);
       scene.add(dirLight);
 
-      // Create Ground
-      const objects = [];
+      let objects = [];
       const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
-      const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
 
-      for (let x = -8; x < 8; x++) {
-        for (let z = -8; z < 8; z++) {
-          const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
-          cube.position.set(x, 0, z);
-          scene.add(cube);
-          objects.push(cube);
+      function initDefaultWorld() {
+        objects.forEach(obj => scene.remove(obj));
+        objects = [];
+        const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
+
+        for (let x = -8; x < 8; x++) {
+          for (let z = -8; z < 8; z++) {
+            const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
+            cube.position.set(x, 0, z);
+            scene.add(cube);
+            objects.push(cube);
+          }
         }
+        spawnPlayer();
       }
 
-      spawnPlayer();
+      initDefaultWorld();
 
-      // Highlight Box
       const highlightGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
       const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 });
       const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
       highlightBox.visible = false;
       scene.add(highlightBox);
 
-      // 3. Render UI & Drag-Drop Mechanics
+      // DOM Elements
       const hotbarEl = document.getElementById('hotbar');
       const fullInvModal = document.getElementById('full-inventory');
       const invGrid = document.getElementById('inventory-grid');
       const moreBtn = document.getElementById('more-btn');
       const closeInvBtn = document.getElementById('close-inv-btn');
+      const helpIconBtn = document.getElementById('help-icon-btn');
+      const infoModal = document.getElementById('info-modal');
+      const invInfoBtn = document.getElementById('inv-info-btn');
+      const saveBtn = document.getElementById('save-btn');
+      const loadBtn = document.getElementById('load-btn');
+      const toastEl = document.getElementById('toast');
+
+      function showToast(message) {
+        toastEl.innerText = message;
+        toastEl.style.display = 'block';
+        setTimeout(() => { toastEl.style.display = 'none'; }, 2500);
+      }
+
+      // 🔥 MUKH NGEAR: SAVE & LOAD
+      function saveWorld() {
+        const blocksData = objects.map(obj => ({
+          x: obj.position.x,
+          y: obj.position.y,
+          z: obj.position.z,
+          color: obj.material.color.getHex()
+        }));
+
+        const playerData = {
+          posX: camera.position.x,
+          posY: camera.position.y,
+          posZ: camera.position.z,
+          yaw: yaw,
+          pitch: pitch
+        };
+
+        const saveData = {
+          blocks: blocksData,
+          player: playerData
+        };
+
+        localStorage.setItem('minecraft_clone_save', JSON.stringify(saveData));
+        showToast('💾 បានរក្សាទុកហ្គេមដោយជោគជ័យ!');
+      }
+
+      function loadWorld() {
+        const savedData = localStorage.getItem('minecraft_clone_save');
+        if (!savedData) {
+          showToast('⚠️ ពុំមានទិន្នន័យត្រូវបានរក្សាទុកទេ!');
+          return;
+        }
+
+        const parsed = JSON.parse(savedData);
+
+        // Clear Existing Blocks
+        objects.forEach(obj => scene.remove(obj));
+        objects = [];
+
+        // Load Saved Blocks
+        parsed.blocks.forEach(b => {
+          const mat = new THREE.MeshLambertMaterial({ color: b.color });
+          const voxel = new THREE.Mesh(blockGeometry, mat);
+          voxel.position.set(b.x, b.y, b.z);
+          scene.add(voxel);
+          objects.push(voxel);
+        });
+
+        // Load Player Pos
+        if (parsed.player) {
+          camera.position.set(parsed.player.posX, parsed.player.posY, parsed.player.posZ);
+          yaw = parsed.player.yaw || 0;
+          pitch = parsed.player.pitch || 0;
+        }
+
+        showToast('📂 បានទាញយកទិន្នន័យមកលេងវិញរចរួចរាល់!');
+      }
+
+      saveBtn.addEventListener('click', (e) => { e.stopPropagation(); saveWorld(); });
+      loadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadWorld(); });
+
+      function toggleInfoModal() {
+        if (infoModal.style.display === 'none' || infoModal.style.display === '') {
+          infoModal.style.display = 'block';
+        } else {
+          infoModal.style.display = 'none';
+        }
+      }
+
+      helpIconBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInfoModal(); });
+      invInfoBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInfoModal(); });
 
       function renderHotbar() {
         hotbarEl.innerHTML = '';
@@ -241,19 +388,9 @@
           slot.style.background = '#' + item.color.toString(16).padStart(6, '0');
           slot.innerText = index === 9 ? '0' : (index + 1);
 
-          // Event ចុចជ្រើសរើស Slot
           slot.addEventListener('click', () => selectSlot(index));
-
-          // Drag & Drop Events លើ Hotbar Slots
-          slot.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            slot.classList.add('drag-over');
-          });
-
-          slot.addEventListener('dragleave', () => {
-            slot.classList.remove('drag-over');
-          });
-
+          slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
+          slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
           slot.addEventListener('drop', (e) => {
             e.preventDefault();
             slot.classList.remove('drag-over');
@@ -275,12 +412,19 @@
         }
       }
 
+      window.addEventListener('wheel', (e) => {
+        if (isInvOpen) return;
+        if (e.deltaY > 0) activeSlotIndex = (activeSlotIndex + 1) % 10;
+        else if (e.deltaY < 0) activeSlotIndex = (activeSlotIndex - 1 + 10) % 10;
+        selectSlot(activeSlotIndex);
+      });
+
       function renderFullInventory() {
         invGrid.innerHTML = '';
         ALL_BLOCKS.forEach((block, index) => {
           const card = document.createElement('div');
           card.className = 'item-card';
-          card.draggable = true; // អនុញ្ញាតឱ្យចាប់ទាញ Drag ឆ្ពោះទៅកាន់ Hotbar
+          card.draggable = true;
 
           const colorHex = '#' + block.color.toString(16).padStart(6, '0');
           card.innerHTML = `
@@ -288,20 +432,13 @@
             <div class="item-name">${block.name}</div>
           `;
 
-          // 🔥 ចុចលើ Item -> ដូរចូល Active Slot ដោយមិនបិទ Modal
           card.addEventListener('click', () => {
             hotbarItems[activeSlotIndex] = block;
             renderHotbar();
           });
 
-          // Drag Events
-          card.addEventListener('dragstart', () => {
-            draggedBlockIndex = index;
-          });
-
-          card.addEventListener('dragend', () => {
-            draggedBlockIndex = null;
-          });
+          card.addEventListener('dragstart', () => { draggedBlockIndex = index; });
+          card.addEventListener('dragend', () => { draggedBlockIndex = null; });
 
           invGrid.appendChild(card);
         });
@@ -315,24 +452,24 @@
           document.exitPointerLock();
         } else {
           fullInvModal.style.display = 'none';
+          infoModal.style.display = 'none';
         }
       }
 
-      moreBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleInventory(true);
-      });
+      moreBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInventory(true); });
       closeInvBtn.addEventListener('click', () => toggleInventory(false));
 
       renderHotbar();
       renderFullInventory();
 
-      // 4. Pointer Lock & Controls
+      // Controls & Locks
       let isLocked = false;
       let pitch = 0, yaw = 0;
 
       document.body.addEventListener('click', (e) => {
-        if (e.target.closest('#hotbar-container') || e.target.closest('#full-inventory')) return;
+        if (e.target.closest('#hotbar-container') || e.target.closest('#full-inventory') || e.target.closest('#top-left-controls') || e.target.closest('#info-modal')) return;
+        
+        infoModal.style.display = 'none';
         if (!isInvOpen) document.body.requestPointerLock();
       });
 
@@ -351,7 +488,6 @@
         camera.rotation.x = pitch;
       });
 
-      // 5. Keyboard Bindings
       let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
       let moveUp = false, moveDown = false;
       let lastSpaceTime = 0;
@@ -411,7 +547,6 @@
         }
       });
 
-      // 6. Physics Collision
       function checkCollisionAt(pos) {
         if (isFlying) return false;
         const pBox = new THREE.Box3(
@@ -425,7 +560,7 @@
         return false;
       }
 
-      // 7. Raycasting for Destroy/Build
+      // Raycasting
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2(0, 0);
 
@@ -437,10 +572,23 @@
 
         if (intersects.length > 0) {
           const intersect = intersects[0];
+
           if (e.button === 0) {
             scene.remove(intersect.object);
             objects.splice(objects.indexOf(intersect.object), 1);
             highlightBox.visible = false;
+          } else if (e.button === 1) {
+            e.preventDefault();
+            const targetedColor = intersect.object.material.color.getHex();
+            const existingSlotIndex = hotbarItems.findIndex(item => item.color === targetedColor);
+
+            if (existingSlotIndex !== -1) {
+              selectSlot(existingSlotIndex);
+            } else {
+              const matchedBlock = ALL_BLOCKS.find(b => b.color === targetedColor) || { name: 'ប្លុកចម្លង', color: targetedColor };
+              hotbarItems[activeSlotIndex] = matchedBlock;
+              renderHotbar();
+            }
           } else if (e.button === 2) {
             const targetPos = new THREE.Vector3().copy(intersect.object.position).add(intersect.face.normal);
 
@@ -470,7 +618,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // 8. Main Loop
+      // Main Loop
       const clock = new THREE.Clock();
       function animate() {
         requestAnimationFrame(animate);
@@ -516,9 +664,7 @@
               canJump = false;
             }
 
-            if (camera.position.y < -30) {
-              spawnPlayer();
-            }
+            if (camera.position.y < -30) spawnPlayer();
           }
 
           raycaster.setFromCamera(mouse, camera);
