@@ -413,12 +413,14 @@
       let selectedColor = hotbarItems[0].color;
       let gameStarted = false;
 
-      // Online Multiplayer State
+      // Online Multiplayer State & Player Meshes
       let isHost = true;
       let peer = null;
       let connections = [];
       let hostConn = null;
       let currentRoomId = "";
+      let otherPlayers = {};
+      let lastNetworkSend = 0;
 
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87ceeb);
@@ -438,6 +440,39 @@
 
       let keysPressed = {};
       let lastSpaceTime = 0;
+
+      // បង្កើត 3D Model សម្រាប់អ្នកលេងផ្សេងទៀត (ក្បាល, ខ្លួន, ដៃ)
+      function createPlayerMesh() {
+        const group = new THREE.Group();
+
+        // 1. ខ្លួន (Body)
+        const bodyGeo = new THREE.BoxGeometry(0.6, 0.9, 0.4);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2233aa });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.45;
+        group.add(body);
+
+        // 2. ក្បាល (Head)
+        const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.15;
+        group.add(head);
+
+        // 3. ដៃឆ្វេង (Left Arm)
+        const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
+        const armMat = new THREE.MeshLambertMaterial({ color: 0x2233aa });
+        const leftArm = new THREE.Mesh(armGeo, armMat);
+        leftArm.position.set(-0.425, 0.525, 0);
+        group.add(leftArm);
+
+        // 4. ដៃស្ដាំ (Right Arm)
+        const rightArm = new THREE.Mesh(armGeo, armMat);
+        rightArm.position.set(0.425, 0.525, 0);
+        group.add(rightArm);
+
+        return group;
+      }
 
       function spawnPlayer() {
         camera.position.set(0, playerHeight + 1, 0);
@@ -572,6 +607,14 @@
           });
 
           conn.on('data', (data) => handleNetData(data, conn));
+
+          conn.on('close', () => {
+            if (otherPlayers[conn.peer]) {
+              scene.remove(otherPlayers[conn.peer]);
+              delete otherPlayers[conn.peer];
+              broadcastNetData({ type: 'PLAYER_LEAVE', id: conn.peer });
+            }
+          });
         });
 
         peer.on('error', () => showToast('⚠️ ID Room នេះមានគេប្រើរួចហើយ!'));
@@ -618,6 +661,23 @@
           if (isHost) broadcastNetData(data, conn);
         } else if (data.type === 'BREAK') {
           breakBlockAt(data.x, data.y, data.z, false);
+          if (isHost) broadcastNetData(data, conn);
+        } else if (data.type === 'PLAYER_MOVE') {
+          let playerMesh = otherPlayers[data.id];
+          if (!playerMesh) {
+            playerMesh = createPlayerMesh();
+            scene.add(playerMesh);
+            otherPlayers[data.id] = playerMesh;
+          }
+          playerMesh.position.set(data.x, data.y - playerHeight, data.z);
+          playerMesh.rotation.y = data.yaw;
+
+          if (isHost) broadcastNetData(data, conn);
+        } else if (data.type === 'PLAYER_LEAVE') {
+          if (otherPlayers[data.id]) {
+            scene.remove(otherPlayers[data.id]);
+            delete otherPlayers[data.id];
+          }
           if (isHost) broadcastNetData(data, conn);
         }
       }
@@ -1189,6 +1249,23 @@
             highlightBox.position.copy(intersects[0].object.position);
             highlightBox.visible = true;
           } else { highlightBox.visible = false; }
+
+          // ផ្ញើទិន្នន័យទីតាំង និងមុំរង្វិលទៅកាន់អ្នកលេងផ្សេងទៀតរៀងរាល់ 50ms
+          const now = performance.now();
+          if (peer && now - lastNetworkSend > 50) {
+            const myId = peer.id;
+            if (myId) {
+              broadcastNetData({
+                type: 'PLAYER_MOVE',
+                id: myId,
+                x: camera.position.x,
+                y: camera.position.y,
+                z: camera.position.z,
+                yaw: yaw
+              });
+            }
+            lastNetworkSend = now;
+          }
         }
 
         renderer.render(scene, camera);
