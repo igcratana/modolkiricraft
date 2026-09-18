@@ -5,15 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D Minecraft Clone - Keo Rathana</title>
   <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; user-select: none; touch-action: none; }
+    * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      touch-action: none;
+    }
+
+    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
     
     #crosshair {
       position: absolute;
       top: 50%; left: 50%;
-      width: 10px; height: 10px;
-      margin-top: -5px; margin-left: -5px;
-      color: white; font-size: 20px;
-      pointer-events: none; z-index: 10;
+      width: 30px; height: 30px;
+      margin-top: -15px; margin-left: -15px;
+      color: white; font-size: 24px;
+      pointer-events: auto; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
     }
 
     /* ប៊ូតុងបញ្ជាលើអេក្រង់ */
@@ -175,18 +186,20 @@
   <div id="top-left-controls">
     <button class="btn-ui" id="save-btn">💾 Save</button>
     <button class="btn-ui" id="load-btn">📂 Load</button>
+    <button class="btn-ui" id="fullscreen-btn">⛶ Fullscreen</button>
     <button class="btn-ui" id="help-icon-btn">❓</button>
   </div>
 
   <div id="info-modal">
     <b>របៀបបញ្ជា៖</b><br>
     - <b>លេខ 1-9 & 0 / Mouse Scroll:</b> ប្ដូរ Slot<br>
-    - <b>Middle Mouse Click / 2-Fingers:</b> Copy ពណ៌<br>
+    - <b>Middle Mouse Click / Double-Tap Crosshair:</b> Copy ពណ៌<br>
     - <b>Space:</b> លោត / ហោះឡើង (Fly)<br>
     - <b>Double Space:</b> បើក / បិទ របៀបហោះ<br>
     - <b>Shift:</b> អោន / ចុះក្រោម (Fly)<br>
     - <b>ទូរស័ព្ទ (Touch):</b><br>
-    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Break
+    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Break<br>
+    &nbsp;&nbsp;• <b>Double Tap ចំ Crosshair:</b> Copy ពណ៌
   </div>
 
   <div id="hotbar-container">
@@ -319,7 +332,9 @@
       const infoModal = document.getElementById('info-modal');
       const saveBtn = document.getElementById('save-btn');
       const loadBtn = document.getElementById('load-btn');
+      const fullscreenBtn = document.getElementById('fullscreen-btn');
       const toastEl = document.getElementById('toast');
+      const crosshairEl = document.getElementById('crosshair');
 
       function showToast(msg) {
         toastEl.innerText = msg;
@@ -356,8 +371,21 @@
         showToast('📂 បានទាញយកទិន្នន័យ!');
       }
 
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {
+            showToast('⚠️ មិនអាចបើក Fullscreen បានទេ');
+          });
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }
+      }
+
       saveBtn.onclick = saveWorld;
       loadBtn.onclick = loadWorld;
+      fullscreenBtn.onclick = toggleFullscreen;
 
       helpIconBtn.onclick = () => {
         infoModal.style.display = (infoModal.style.display === 'none' || !infoModal.style.display) ? 'block' : 'none';
@@ -419,7 +447,8 @@
       document.body.addEventListener('click', (e) => {
         if (e.target.closest('#top-left-controls') || e.target.closest('#hotbar-container') || 
             e.target.closest('#full-inventory') || e.target.closest('#joystick-zone') || 
-            e.target.closest('#mobile-action-btns') || e.target.closest('#info-modal')) return;
+            e.target.closest('#mobile-action-btns') || e.target.closest('#info-modal') ||
+            e.target.closest('#crosshair')) return;
 
         if (!isInvOpen && !('ontouchstart' in window)) {
           document.body.requestPointerLock();
@@ -440,7 +469,7 @@
         camera.rotation.x = pitch;
       });
 
-      // 🔥 MOUSE WHEEL SCROLL (ប្ដូរ INVENTORY SLOT)
+      // MOUSE WHEEL SCROLL
       window.addEventListener('wheel', (e) => {
         if (isInvOpen) return;
         if (e.deltaY > 0) {
@@ -467,7 +496,6 @@
         if (e.code === 'Tab' || e.code === 'KeyE') { e.preventDefault(); toggleInventory(); return; }
         if (isInvOpen) return;
 
-        // 🔥 ចុចលេខ 1-9 និង 0 ដើម្បីប្ដូរ INVENTORY SLOT
         if (e.code.startsWith('Digit')) {
           const num = parseInt(e.code.replace('Digit', ''));
           if (num >= 1 && num <= 9) {
@@ -563,13 +591,13 @@
         }
       }
 
-      // 🔥 MOUSE CLICK ACTIONS (0 = BREAK, 1 = MIDDLE SCROLL COPY, 2 = BUILD)
+      // MOUSE CLICK ACTIONS
       window.addEventListener('mousedown', (e) => {
         if (!isLocked || isInvOpen) return;
         if (e.button === 0) performAction('break');
         else if (e.button === 1) {
           e.preventDefault();
-          performAction('copy'); // ចុច Scroll ដើម្បី Copy ពណ៌
+          performAction('copy');
         }
         else if (e.button === 2) performAction('build');
       });
@@ -585,6 +613,18 @@
       let isHoldBreak = false;
       let touchStartX = 0, touchStartY = 0;
 
+      // Double tap crosshair logic
+      let lastCrosshairTap = 0;
+      crosshairEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentTime = performance.now();
+        if (currentTime - lastCrosshairTap < 300) {
+          performAction('copy');
+        }
+        lastCrosshairTap = currentTime;
+      });
+
       joystickZone.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const touch = e.changedTouches[0];
@@ -595,18 +635,15 @@
       window.addEventListener('touchstart', (e) => {
         if (isInvOpen) return;
 
-        if (e.touches.length === 2) {
-          e.preventDefault();
-          clearTimeout(touchTimer);
-          isHoldBreak = false;
-          performAction('copy');
-          return;
-        }
-
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
 
-          if (touch.clientX > window.innerWidth / 2 && lookTouchId === null && !e.target.closest('#mobile-action-btns') && !e.target.closest('#top-left-controls') && !e.target.closest('#hotbar-container')) {
+          if (touch.clientX > window.innerWidth / 2 && lookTouchId === null && 
+              !e.target.closest('#mobile-action-btns') && 
+              !e.target.closest('#top-left-controls') && 
+              !e.target.closest('#hotbar-container') &&
+              !e.target.closest('#crosshair')) {
+            
             lookTouchId = touch.identifier;
             lastTouchX = touch.clientX;
             lastTouchY = touch.clientY;
@@ -621,7 +658,7 @@
             }, 400);
           }
         }
-      });
+      }, { passive: false });
 
       window.addEventListener('touchmove', (e) => {
         for (let i = 0; i < e.changedTouches.length; i++) {
@@ -646,7 +683,7 @@
             lastTouchY = touch.clientY;
           }
         }
-      });
+      }, { passive: false });
 
       window.addEventListener('touchend', (e) => {
         for (let i = 0; i < e.changedTouches.length; i++) {
@@ -696,6 +733,8 @@
       };
 
       window.addEventListener('contextmenu', e => e.preventDefault());
+      window.addEventListener('selectstart', e => e.preventDefault());
+
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -720,8 +759,39 @@
           if (moveLeft) moveDir.sub(side);
           moveDir.normalize();
 
-          camera.position.x += moveDir.x * speed * delta;
-          camera.position.z += moveDir.z * speed * delta;
+          if (moveDir.lengthSq() > 0) {
+            const moveDistance = speed * delta;
+            const nextX = camera.position.x + moveDir.x * moveDistance;
+            const nextZ = camera.position.z + moveDir.z * moveDistance;
+
+            if (isFlying) {
+              camera.position.x = nextX;
+              camera.position.z = nextZ;
+            } else {
+              const feetPos = camera.position.clone();
+              feetPos.y -= (playerHeight - 0.2);
+              
+              const forwardRay = new THREE.Raycaster(feetPos, moveDir, 0, 0.6);
+              const lowHits = forwardRay.intersectObjects(objects);
+
+              if (lowHits.length > 0) {
+                const stepCheckPos = feetPos.clone();
+                stepCheckPos.y += 1.0;
+
+                const highRay = new THREE.Raycaster(stepCheckPos, moveDir, 0, 0.6);
+                const highHits = highRay.intersectObjects(objects);
+
+                if (highHits.length === 0) {
+                  camera.position.x = nextX;
+                  camera.position.z = nextZ;
+                  camera.position.y += 1.0;
+                }
+              } else {
+                camera.position.x = nextX;
+                camera.position.z = nextZ;
+              }
+            }
+          }
 
           if (isFlying) {
             const flySpeed = 8.0;
