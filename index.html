@@ -13,9 +13,10 @@
       -ms-user-select: none;
       user-select: none;
       touch-action: none;
+      box-sizing: border-box;
     }
 
-    body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #000; }
     
     #crosshair {
       position: absolute;
@@ -25,6 +26,63 @@
       color: white; font-size: 24px;
       pointer-events: auto; z-index: 10;
       display: flex; align-items: center; justify-content: center;
+    }
+
+    /* MAIN MENU OVERLAY */
+    #main-menu {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .menu-title {
+      color: #fff;
+      font-size: 32px;
+      font-weight: 800;
+      text-shadow: 2px 2px 8px #000, 0 0 20px #55aa55;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .menu-btn {
+      width: 280px;
+      padding: 12px 20px;
+      background: rgba(30, 30, 30, 0.85);
+      border: 2px solid #777;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .menu-btn:hover {
+      background: #55aa55;
+      border-color: #fff;
+      transform: scale(1.05);
+      box-shadow: 0 0 15px #55aa55;
+    }
+
+    .menu-copyright {
+      position: absolute;
+      bottom: 20px;
+      color: #ffca28;
+      font-size: 12px;
+      font-weight: bold;
+      text-shadow: 1px 1px 3px #000;
+      text-align: center;
     }
 
     /* ប៊ូតុងបញ្ជាលើអេក្រង់ */
@@ -44,6 +102,16 @@
       transition: 0.2s;
     }
     .btn-ui:hover { background: #555; border-color: #fff; transform: scale(1.03); }
+
+    /* Room Badge */
+    #room-status-badge {
+      position: absolute;
+      top: 15px; right: 15px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #55aa55; border-radius: 6px;
+      color: #ffca28; font-size: 12px; font-weight: bold;
+      padding: 6px 12px; z-index: 15; display: none;
+    }
 
     /* ផ្ទាំងព័ត៌មានណែនាំ */
     #info-modal {
@@ -78,7 +146,7 @@
       align-items: center; justify-content: center;
       color: white; font-weight: bold;
       text-shadow: 1px 1px 2px black;
-      box-sizing: border-box; font-size: 12px;
+      font-size: 12px;
       position: relative; transition: border-color 0.15s;
     }
     
@@ -104,7 +172,6 @@
       flex-direction: column; gap: 10px;
       z-index: 20; color: white;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      box-sizing: border-box;
     }
 
     .inv-header { display: flex; justify-content: space-between; align-items: center; }
@@ -139,10 +206,10 @@
     }
 
     #toast {
-      position: absolute; top: 15px; right: 15px;
+      position: absolute; top: 55px; right: 15px;
       background: rgba(40, 167, 69, 0.9); color: white;
       padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;
-      display: none; z-index: 30;
+      display: none; z-index: 130;
     }
 
     /* MOBILE CONTROLS UI */
@@ -176,16 +243,46 @@
       touch-action: manipulation;
     }
     .m-btn:active { background: rgba(255, 255, 255, 0.4); }
+
+    /* MODAL POPUPS */
+    .modal-overlay {
+      display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.85); z-index: 120; align-items: center; justify-content: center;
+    }
+    .modal-box {
+      background: #222; border: 2px solid #55aa55; border-radius: 10px; padding: 20px; width: 360px; color: white; text-align: center;
+    }
+    .modal-box input { width: 100%; padding: 10px; margin: 6px 0 12px 0; border-radius: 6px; border: 1px solid #777; outline: none; background: #111; color: white; }
+    
+    .save-item {
+      display: flex; justify-content: space-between; align-items: center; background: #333;
+      padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #555; text-align: left;
+    }
+    .btn-del { background: #d9534f; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .btn-load-item { background: #5cb85c; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
   </style>
 </head>
 <body>
 
+  <!-- START MENU -->
+  <div id="main-menu">
+    <div class="menu-title">MINECRAFT 3D CLONE</div>
+    <button class="menu-btn" id="btn-new-game">🎮 ចាប់ផ្ដើមថ្មី (NEW GAME)</button>
+    <button class="menu-btn" id="btn-load-game">📂 លេងបន្ត (LOAD GAME)</button>
+    <button class="menu-btn" id="btn-multiplayer">🌐 លេងជាមួយមិត្តភ័ក្ដ (ONLINE)</button>
+    <div class="menu-copyright">
+      Copyright © រក្សាសិទ្ធិគ្រប់យ៉ាងដោយ លោក កែវ រតនា ហៅ ប្រូខួច
+    </div>
+  </div>
+
   <div id="crosshair">+</div>
   <div id="toast">បានរក្សាទុកដោយជោគជ័យ!</div>
+  <div id="room-status-badge">ROOM ID: ---</div>
   
   <div id="top-left-controls">
-    <button class="btn-ui" id="save-btn">💾 Save</button>
-    <button class="btn-ui" id="load-btn">📂 Load</button>
+    <button class="btn-ui" id="menu-back-btn">🏠 Menu</button>
+    <button class="btn-ui" id="save-btn">💾 Save Local</button>
+    <button class="btn-ui" id="load-btn">📂 Load Local</button>
     <button class="btn-ui" id="fullscreen-btn">⛶ Fullscreen</button>
     <button class="btn-ui" id="help-icon-btn">❓</button>
   </div>
@@ -231,10 +328,64 @@
     <button id="close-inv-btn">បិទ (Close)</button>
   </div>
 
+  <!-- MULTIPLAYER MODAL POPUP -->
+  <div class="modal-overlay" id="multiplayer-modal">
+    <div class="modal-box">
+      <h3>🌐 ONLINE MULTIPLAYER</h3>
+      <p style="font-size:11px; color:#aaa;">(Save នឹងរក្សាទុកតែលើ Local Storage របស់ Host ប៉ុណ្ណោះ)</p>
+
+      <button class="menu-btn" style="width:100%; margin-bottom:10px;" id="btn-create-room">👑 បង្កើត Room ថ្មី (Host)</button>
+      <hr style="border-color:#444; margin:12px 0;">
+      <div style="text-align:left; font-size:12px;">បញ្ចូល Room ID/ឈ្មោះ ដើម្បីចូលលេងជាមួយ Host:</div>
+      <input type="text" id="join-room-id-input" placeholder="ឧទាហរណ៍: rathana-world">
+      <button class="menu-btn" style="width:100%; background:#0275d8;" id="btn-join-room">🔗 ចូលរួមលេង (Join Room)</button>
+      <button class="menu-btn" style="width:100%; background:#d9534f; border:none; margin-top:10px;" id="btn-close-mp">បោះបង់</button>
+    </div>
+  </div>
+
+  <!-- SAVE FORM MODAL -->
+  <div class="modal-overlay" id="save-form-modal">
+    <div class="modal-box">
+      <h3>💾 រក្សាទុក World (Local)</h3>
+      <div style="text-align: left; font-size: 12px; margin-bottom: 2px;">ឈ្មោះ World (ឬ Room ID):</div>
+      <input type="text" id="save-world-name" placeholder="បញ្ចូលឈ្មោះ World...">
+      <div style="display:flex; gap:10px;">
+        <button class="menu-btn" style="width:50%; background:#5cb85c; border:none;" id="btn-confirm-save">រក្សាទុក</button>
+        <button class="menu-btn" style="width:50%; background:#d9534f; border:none;" id="btn-cancel-save">បោះបង់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAD LIST MODAL POPUP -->
+  <div class="modal-overlay" id="load-modal">
+    <div class="modal-box" style="width:380px;">
+      <h3>📂 បញ្ជី World (Local Storage)</h3>
+      <div id="save-list-container" style="max-height: 250px; overflow-y: auto; margin: 15px 0;"></div>
+      <button class="menu-btn" style="width:100%; background:#777; border:none;" id="btn-close-load">បិទ</button>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
   <script>
     window.addEventListener('DOMContentLoaded', () => {
+      // UI Elements
+      const mainMenuEl = document.getElementById('main-menu');
+      const hotbarEl = document.getElementById('hotbar');
+      const fullInvModal = document.getElementById('full-inventory');
+      const invGrid = document.getElementById('inventory-grid');
+      const moreBtn = document.getElementById('more-btn');
+      const closeInvBtn = document.getElementById('close-inv-btn');
+      const helpIconBtn = document.getElementById('help-icon-btn');
+      const infoModal = document.getElementById('info-modal');
+      const saveBtn = document.getElementById('save-btn');
+      const loadBtn = document.getElementById('load-btn');
+      const menuBackBtn = document.getElementById('menu-back-btn');
+      const fullscreenBtn = document.getElementById('fullscreen-btn');
+      const toastEl = document.getElementById('toast');
+      const crosshairEl = document.getElementById('crosshair');
+
       const ALL_BLOCKS = [
         { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
         { id: 1, name: 'ដី (Dirt)', color: 0x8b5a2b },
@@ -260,6 +411,14 @@
       let hotbarItems = ALL_BLOCKS.slice(0, 10);
       let activeSlotIndex = 0;
       let selectedColor = hotbarItems[0].color;
+      let gameStarted = false;
+
+      // Online Multiplayer State
+      let isHost = true;
+      let peer = null;
+      let connections = [];
+      let hostConn = null;
+      let currentRoomId = "";
 
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87ceeb);
@@ -284,6 +443,26 @@
         camera.position.set(0, playerHeight + 1, 0);
         camera.rotation.set(0, 0, 0);
         yVelocity = 0;
+      }
+
+      function renderHotbar() {
+        hotbarEl.innerHTML = '';
+        hotbarItems.forEach((item, index) => {
+          const slot = document.createElement('div');
+          slot.className = `slot ${index === activeSlotIndex ? 'active' : ''}`;
+          slot.style.background = '#' + item.color.toString(16).padStart(6, '0');
+          slot.innerText = index === 9 ? '0' : (index + 1);
+          slot.onclick = () => selectSlot(index);
+          hotbarEl.appendChild(slot);
+        });
+        selectedColor = hotbarItems[activeSlotIndex].color;
+      }
+
+      function selectSlot(index) {
+        if (index >= 0 && index < 10) {
+          activeSlotIndex = index;
+          renderHotbar();
+        }
       }
 
       const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -311,6 +490,9 @@
             objects.push(cube);
           }
         }
+        hotbarItems = ALL_BLOCKS.slice(0, 10);
+        activeSlotIndex = 0;
+        renderHotbar();
         spawnPlayer();
       }
 
@@ -322,94 +504,273 @@
       highlightBox.visible = false;
       scene.add(highlightBox);
 
-      // UI Elements
-      const hotbarEl = document.getElementById('hotbar');
-      const fullInvModal = document.getElementById('full-inventory');
-      const invGrid = document.getElementById('inventory-grid');
-      const moreBtn = document.getElementById('more-btn');
-      const closeInvBtn = document.getElementById('close-inv-btn');
-      const helpIconBtn = document.getElementById('help-icon-btn');
-      const infoModal = document.getElementById('info-modal');
-      const saveBtn = document.getElementById('save-btn');
-      const loadBtn = document.getElementById('load-btn');
-      const fullscreenBtn = document.getElementById('fullscreen-btn');
-      const toastEl = document.getElementById('toast');
-      const crosshairEl = document.getElementById('crosshair');
-
       function showToast(msg) {
         toastEl.innerText = msg;
         toastEl.style.display = 'block';
         setTimeout(() => { toastEl.style.display = 'none'; }, 2500);
       }
 
-      function saveWorld() {
-        const blocksData = objects.map(obj => ({
-          x: obj.position.x, y: obj.position.y, z: obj.position.z,
-          color: obj.material.color.getHex()
-        }));
-        const playerData = { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch };
-        localStorage.setItem('minecraft_clone_save', JSON.stringify({ blocks: blocksData, player: playerData }));
-        showToast('💾 បានរក្សាទុកហ្គេម!');
+      function startGame() {
+        gameStarted = true;
+        mainMenuEl.style.display = 'none';
       }
 
-      function loadWorld() {
-        const savedData = localStorage.getItem('minecraft_clone_save');
-        if (!savedData) return showToast('⚠️ គ្មានទិន្នន័យរក្សាទុក!');
-        const parsed = JSON.parse(savedData);
+      document.getElementById('btn-new-game').onclick = () => {
+        initDefaultWorld();
+        startGame();
+        showToast('🎮 បានចាប់ផ្ដើមហ្គេមថ្មី!');
+      };
+
+      menuBackBtn.onclick = () => {
+        gameStarted = false;
+        mainMenuEl.style.display = 'flex';
+        document.exitPointerLock?.();
+      };
+
+      // ONLINE MULTIPLAYER (WEBRTC PEERJS) LOGIC
+      document.getElementById('btn-multiplayer').onclick = () => {
+        document.getElementById('multiplayer-modal').style.display = 'flex';
+      };
+      document.getElementById('btn-close-mp').onclick = () => {
+        document.getElementById('multiplayer-modal').style.display = 'none';
+      };
+
+      document.getElementById('btn-create-room').onclick = () => {
+        const roomId = prompt('បញ្ចូលឈ្មោះ/ID Room ដែលត្រូវបង្កើត:', 'room-' + Math.floor(Math.random() * 1000));
+        if (roomId) {
+          setupHostRoom(roomId);
+          document.getElementById('multiplayer-modal').style.display = 'none';
+          startGame();
+        }
+      };
+
+      document.getElementById('btn-join-room').onclick = () => {
+        const inputId = document.getElementById('join-room-id-input').value.trim();
+        if (inputId) {
+          joinHostRoom(inputId);
+        } else showToast('⚠️ សូមបញ្ចូល ID ឬឈ្មោះ Room!');
+      };
+
+      function setupHostRoom(roomId) {
+        isHost = true;
+        peer = new Peer(roomId);
+
+        peer.on('open', (id) => {
+          currentRoomId = id;
+          document.getElementById('room-status-badge').style.display = 'block';
+          document.getElementById('room-status-badge').innerText = `👑 ROOM: ${id}`;
+          showToast(`✅ បានបង្កើត Room: ${id}`);
+        });
+
+        peer.on('connection', (conn) => {
+          connections.push(conn);
+          showToast('👤 មានអ្នកលេងផ្សេងចូលរួម!');
+
+          conn.on('open', () => {
+            const worldData = objects.map(o => ({ x: o.position.x, y: o.position.y, z: o.position.z, color: o.material.color.getHex() }));
+            conn.send({ type: 'INIT_WORLD', world: worldData });
+          });
+
+          conn.on('data', (data) => handleNetData(data, conn));
+        });
+
+        peer.on('error', () => showToast('⚠️ ID Room នេះមានគេប្រើរួចហើយ!'));
+      }
+
+      function joinHostRoom(targetRoomId) {
+        isHost = false;
+        peer = new Peer();
+
+        peer.on('open', () => {
+          hostConn = peer.connect(targetRoomId);
+
+          hostConn.on('open', () => {
+            currentRoomId = targetRoomId;
+            document.getElementById('room-status-badge').style.display = 'block';
+            document.getElementById('room-status-badge').innerText = `🔗 JOINED: ${targetRoomId}`;
+            showToast('✅ បានភ្ជាប់ទៅកាន់ Host ជោគជ័យ!');
+            document.getElementById('multiplayer-modal').style.display = 'none';
+            startGame();
+          });
+
+          hostConn.on('data', (data) => handleNetData(data, hostConn));
+          hostConn.on('close', () => showToast('❌ ដាច់ការភ្ជាប់ពី Host!'));
+        });
+
+        peer.on('error', () => showToast('❌ រកមិនឃើញ Room នេះទេ!'));
+      }
+
+      function broadcastNetData(data, ignoreConn = null) {
+        if (isHost) {
+          connections.forEach(c => { if (c !== ignoreConn && c.open) c.send(data); });
+        } else if (hostConn && hostConn.open) {
+          hostConn.send(data);
+        }
+      }
+
+      function handleNetData(data, conn) {
+        if (data.type === 'INIT_WORLD') {
+          objects.forEach(o => scene.remove(o));
+          objects = [];
+          data.world.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+        } else if (data.type === 'BUILD') {
+          buildBlockAt(data.x, data.y, data.z, data.color, false);
+          if (isHost) broadcastNetData(data, conn);
+        } else if (data.type === 'BREAK') {
+          breakBlockAt(data.x, data.y, data.z, false);
+          if (isHost) broadcastNetData(data, conn);
+        }
+      }
+
+      function buildBlockAt(x, y, z, colorHex, sync = true) {
+        const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: colorHex }));
+        voxel.position.set(x, y, z);
+        scene.add(voxel);
+        objects.push(voxel);
+        if (sync) broadcastNetData({ type: 'BUILD', x, y, z, color: colorHex });
+      }
+
+      function breakBlockAt(x, y, z, sync = true) {
+        const target = objects.find(o => o.position.x === x && o.position.y === y && o.position.z === z);
+        if (target) {
+          scene.remove(target);
+          objects.splice(objects.indexOf(target), 1);
+          if (sync) broadcastNetData({ type: 'BREAK', x, y, z });
+        }
+      }
+
+      // LOCAL STORAGE (HOST ONLY)
+      function saveWorldLocal(worldName) {
+        if (!isHost) {
+          showToast('⚠️ មានតែ Host ទេដែលអាច Save បាន!');
+          return;
+        }
+
+        const worldData = {
+          worldName: worldName,
+          player: { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch },
+          hotbar: hotbarItems.map(item => item.id),
+          activeSlotIndex: activeSlotIndex,
+          blocks: objects.map(o => ({
+            x: o.position.x, y: o.position.y, z: o.position.z,
+            color: o.material.color.getHex()
+          }))
+        };
+
+        let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
+        localSaves[worldName] = worldData;
+        localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
+        showToast('📱 បាន Save ក្នុង Local Storage ជោគជ័យ!');
+      }
+
+      function fetchLocalSaves() {
+        const container = document.getElementById('save-list-container');
+        const localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
+        const names = Object.keys(localSaves);
+
+        if (names.length === 0) {
+          container.innerHTML = '<div style="color:#aaa;">ពុំទាន់មាន Save World ឡើយ</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        names.forEach(name => {
+          const item = document.createElement('div');
+          item.className = 'save-item';
+          item.innerHTML = `
+            <div>
+              <div style="font-weight:bold; font-size:14px;">${name}</div>
+              <div style="font-size:11px; color:#55aa55;">📱 Local Save</div>
+            </div>
+            <div>
+              <button class="btn-load-item" onclick="loadLocalWorldByName('${name}')">🎮 Play / Host</button>
+              <button class="btn-del" onclick="deleteLocalWorldByName('${name}')">🗑️</button>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      }
+
+      window.loadLocalWorldByName = (name) => {
+        const localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
+        const data = localSaves[name];
+        if (!data) return showToast('⚠️ រកមិនឃើញ World');
+
         objects.forEach(obj => scene.remove(obj));
         objects = [];
-        parsed.blocks.forEach(b => {
-          const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: b.color }));
-          voxel.position.set(b.x, b.y, b.z);
-          scene.add(voxel);
-          objects.push(voxel);
-        });
-        if (parsed.player) {
-          camera.position.set(parsed.player.posX, parsed.player.posY, parsed.player.posZ);
-          yaw = parsed.player.yaw || 0; pitch = parsed.player.pitch || 0;
+
+        data.blocks.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+
+        if (data.player) {
+          camera.position.set(data.player.posX, data.player.posY, data.player.posZ);
+          yaw = data.player.yaw || 0; pitch = data.player.pitch || 0;
         }
-        showToast('📂 បានទាញយកទិន្នន័យ!');
-      }
+
+        if (data.hotbar && Array.isArray(data.hotbar)) {
+          hotbarItems = data.hotbar.map(id => ALL_BLOCKS.find(b => b.id === id) || ALL_BLOCKS[0]);
+        }
+        if (typeof data.activeSlotIndex === 'number') activeSlotIndex = data.activeSlotIndex;
+        renderHotbar();
+
+        setupHostRoom(name);
+        document.getElementById('load-modal').style.display = 'none';
+        startGame();
+        showToast(`✅ បាន Load: ${name}`);
+      };
+
+      window.deleteLocalWorldByName = (name) => {
+        if (!confirm(`តើអ្នកប្រាកដថាចង់លុប World "${name}"?`)) return;
+        let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
+        delete localSaves[name];
+        localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
+        showToast('🗑️ បានលុបជោគជ័យ!');
+        fetchLocalSaves();
+      };
+
+      saveBtn.onclick = () => {
+        if (!isHost) return showToast('⚠️ ការ Save រក្សាទុកតែលើ Local Host ទេ!');
+        document.getElementById('save-world-name').value = currentRoomId;
+        document.getElementById('save-form-modal').style.display = 'flex';
+      };
+
+      document.getElementById('btn-cancel-save').onclick = () => {
+        document.getElementById('save-form-modal').style.display = 'none';
+      };
+
+      document.getElementById('btn-confirm-save').onclick = () => {
+        const name = document.getElementById('save-world-name').value.trim();
+        if (!name) return showToast('⚠️ សូមបញ្ចូលឈ្មោះ World');
+        saveWorldLocal(name);
+        document.getElementById('save-form-modal').style.display = 'none';
+      };
+
+      loadBtn.onclick = () => {
+        document.getElementById('load-modal').style.display = 'flex';
+        fetchLocalSaves();
+      };
+
+      document.getElementById('btn-load-game').onclick = () => {
+        document.getElementById('load-modal').style.display = 'flex';
+        fetchLocalSaves();
+      };
+
+      document.getElementById('btn-close-load').onclick = () => {
+        document.getElementById('load-modal').style.display = 'none';
+      };
 
       function toggleFullscreen() {
         if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {
-            showToast('⚠️ មិនអាចបើក Fullscreen បានទេ');
-          });
-        } else {
-          if (document.exitFullscreen) {
-            document.exitFullscreen();
-          }
+          document.documentElement.requestFullscreen().catch(() => showToast('⚠️ មិនអាចបើក Fullscreen បានទេ'));
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen();
         }
       }
 
-      saveBtn.onclick = saveWorld;
-      loadBtn.onclick = loadWorld;
       fullscreenBtn.onclick = toggleFullscreen;
 
       helpIconBtn.onclick = () => {
         infoModal.style.display = (infoModal.style.display === 'none' || !infoModal.style.display) ? 'block' : 'none';
       };
-
-      function renderHotbar() {
-        hotbarEl.innerHTML = '';
-        hotbarItems.forEach((item, index) => {
-          const slot = document.createElement('div');
-          slot.className = `slot ${index === activeSlotIndex ? 'active' : ''}`;
-          slot.style.background = '#' + item.color.toString(16).padStart(6, '0');
-          slot.innerText = index === 9 ? '0' : (index + 1);
-          slot.onclick = () => selectSlot(index);
-          hotbarEl.appendChild(slot);
-        });
-        selectedColor = hotbarItems[activeSlotIndex].color;
-      }
-
-      function selectSlot(index) {
-        if (index >= 0 && index < 10) {
-          activeSlotIndex = index;
-          renderHotbar();
-        }
-      }
 
       function renderFullInventory() {
         invGrid.innerHTML = '';
@@ -428,6 +789,7 @@
 
       let isInvOpen = false;
       function toggleInventory(state) {
+        if (!gameStarted) return;
         isInvOpen = state !== undefined ? state : !isInvOpen;
         fullInvModal.style.display = isInvOpen ? 'flex' : 'none';
         if (isInvOpen) document.exitPointerLock?.();
@@ -445,10 +807,12 @@
       let isLocked = false;
 
       document.body.addEventListener('click', (e) => {
+        if (!gameStarted) return;
         if (e.target.closest('#top-left-controls') || e.target.closest('#hotbar-container') || 
             e.target.closest('#full-inventory') || e.target.closest('#joystick-zone') || 
             e.target.closest('#mobile-action-btns') || e.target.closest('#info-modal') ||
-            e.target.closest('#crosshair')) return;
+            e.target.closest('#crosshair') || e.target.closest('#main-menu') ||
+            e.target.closest('.modal-overlay')) return;
 
         if (!isInvOpen && !('ontouchstart' in window)) {
           document.body.requestPointerLock();
@@ -460,7 +824,7 @@
       });
 
       document.addEventListener('mousemove', (e) => {
-        if (!isLocked || isInvOpen) return;
+        if (!isLocked || isInvOpen || !gameStarted) return;
         yaw -= e.movementX * 0.002;
         pitch -= e.movementY * 0.002;
         pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
@@ -469,18 +833,14 @@
         camera.rotation.x = pitch;
       });
 
-      // MOUSE WHEEL SCROLL
       window.addEventListener('wheel', (e) => {
-        if (isInvOpen) return;
-        if (e.deltaY > 0) {
-          selectSlot((activeSlotIndex + 1) % 10);
-        } else if (e.deltaY < 0) {
-          selectSlot((activeSlotIndex - 1 + 10) % 10);
-        }
+        if (isInvOpen || !gameStarted) return;
+        if (e.deltaY > 0) selectSlot((activeSlotIndex + 1) % 10);
+        else if (e.deltaY < 0) selectSlot((activeSlotIndex - 1 + 10) % 10);
       });
 
-      // KEYBOARD INPUTS
       document.addEventListener('keydown', (e) => {
+        if (!gameStarted) return;
         if (e.code === 'CapsLock') {
           e.preventDefault();
           if (isLocked) {
@@ -488,7 +848,7 @@
             showToast('🖱️ បង្ហាញ Mouse Cursor');
           } else {
             document.body.requestPointerLock();
-            showToast('🎮 បិទ Mouse Cursor (ចូលលេង)');
+            showToast('🎮 បិទ Mouse Cursor');
           }
           return;
         }
@@ -498,11 +858,8 @@
 
         if (e.code.startsWith('Digit')) {
           const num = parseInt(e.code.replace('Digit', ''));
-          if (num >= 1 && num <= 9) {
-            selectSlot(num - 1);
-          } else if (num === 0) {
-            selectSlot(9);
-          }
+          if (num >= 1 && num <= 9) selectSlot(num - 1);
+          else if (num === 0) selectSlot(9);
           return;
         }
 
@@ -544,6 +901,7 @@
       });
 
       document.addEventListener('keyup', (e) => {
+        if (!gameStarted) return;
         keysPressed[e.code] = false;
 
         switch (e.code) {
@@ -563,24 +921,20 @@
         }
       });
 
-      // Raycaster & Actions
       const raycaster = new THREE.Raycaster();
       const mouseCenter = new THREE.Vector2(0, 0);
 
       function performAction(type) {
+        if (!gameStarted) return;
         raycaster.setFromCamera(mouseCenter, camera);
         const intersects = raycaster.intersectObjects(objects);
         if (intersects.length > 0) {
           const intersect = intersects[0];
           if (type === 'break') {
-            scene.remove(intersect.object);
-            objects.splice(objects.indexOf(intersect.object), 1);
+            breakBlockAt(intersect.object.position.x, intersect.object.position.y, intersect.object.position.z);
           } else if (type === 'build') {
             const targetPos = new THREE.Vector3().copy(intersect.object.position).add(intersect.face.normal);
-            const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: selectedColor }));
-            voxel.position.copy(targetPos);
-            scene.add(voxel);
-            objects.push(voxel);
+            buildBlockAt(targetPos.x, targetPos.y, targetPos.z, selectedColor);
           } else if (type === 'copy') {
             const blockColor = intersect.object.material.color.getHex();
             const foundBlock = ALL_BLOCKS.find(b => b.color === blockColor) || { name: 'Block', color: blockColor };
@@ -591,9 +945,8 @@
         }
       }
 
-      // MOUSE CLICK ACTIONS
       window.addEventListener('mousedown', (e) => {
-        if (!isLocked || isInvOpen) return;
+        if (!isLocked || isInvOpen || !gameStarted) return;
         if (e.button === 0) performAction('break');
         else if (e.button === 1) {
           e.preventDefault();
@@ -602,7 +955,6 @@
         else if (e.button === 2) performAction('build');
       });
 
-      // TOUCH CONTROLS
       const joystickZone = document.getElementById('joystick-zone');
       const joystickKnob = document.getElementById('joystick-knob');
       let joystickTouchId = null;
@@ -613,9 +965,9 @@
       let isHoldBreak = false;
       let touchStartX = 0, touchStartY = 0;
 
-      // Double tap crosshair logic
       let lastCrosshairTap = 0;
       crosshairEl.addEventListener('touchstart', (e) => {
+        if (!gameStarted) return;
         e.preventDefault();
         e.stopPropagation();
         const currentTime = performance.now();
@@ -626,6 +978,7 @@
       });
 
       joystickZone.addEventListener('touchstart', (e) => {
+        if (!gameStarted) return;
         e.preventDefault();
         const touch = e.changedTouches[0];
         joystickTouchId = touch.identifier;
@@ -633,7 +986,7 @@
       });
 
       window.addEventListener('touchstart', (e) => {
-        if (isInvOpen) return;
+        if (isInvOpen || !gameStarted) return;
 
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
@@ -642,7 +995,9 @@
               !e.target.closest('#mobile-action-btns') && 
               !e.target.closest('#top-left-controls') && 
               !e.target.closest('#hotbar-container') &&
-              !e.target.closest('#crosshair')) {
+              !e.target.closest('#crosshair') &&
+              !e.target.closest('#main-menu') &&
+              !e.target.closest('.modal-overlay')) {
             
             lookTouchId = touch.identifier;
             lastTouchX = touch.clientX;
@@ -661,6 +1016,7 @@
       }, { passive: false });
 
       window.addEventListener('touchmove', (e) => {
+        if (!gameStarted) return;
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           if (touch.identifier === joystickTouchId) {
@@ -686,6 +1042,7 @@
       }, { passive: false });
 
       window.addEventListener('touchend', (e) => {
+        if (!gameStarted) return;
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           if (touch.identifier === joystickTouchId) {
@@ -722,11 +1079,13 @@
       }
 
       document.getElementById('m-btn-jump').onclick = () => {
+        if (!gameStarted) return;
         if (isFlying) camera.position.y += 1.5;
         else if (canJump) { yVelocity = JUMP_FORCE; canJump = false; }
       };
 
       document.getElementById('m-btn-fly').onclick = () => {
+        if (!gameStarted) return;
         isFlying = !isFlying;
         yVelocity = 0;
         showToast(isFlying ? '✈ របៀបហោះ៖ បើក' : '🚶 របៀបដើរ');
@@ -748,7 +1107,7 @@
         
         let speed = isFlying ? 10 : (isCrouching ? 2.5 : 5);
 
-        if (!isInvOpen) {
+        if (!isInvOpen && gameStarted) {
           const front = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
           const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
           const moveDir = new THREE.Vector3();
@@ -795,12 +1154,8 @@
 
           if (isFlying) {
             const flySpeed = 8.0;
-            if (keysPressed['Space']) {
-              camera.position.y += flySpeed * delta;
-            }
-            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
-              camera.position.y -= flySpeed * delta;
-            }
+            if (keysPressed['Space']) camera.position.y += flySpeed * delta;
+            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) camera.position.y -= flySpeed * delta;
 
             const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, playerHeight + 0.1);
             const hits = downRay.intersectObjects(objects);
