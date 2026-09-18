@@ -345,7 +345,6 @@
       <h3>🌐 ONLINE MULTIPLAYER</h3>
       <button class="menu-btn" style="width:100%; margin-bottom:10px;" id="btn-create-room">👑 បង្កើត Room ថ្មី (Host)</button>
       
-      <!-- ប៊ូតុងបន្ថែម៖ បង្កើត Room យកពី Save Local -->
       <button class="menu-btn" style="width:100%; margin-bottom:10px; background:#4b6cb7; border-color:#6886e6;" id="btn-host-from-local">💾 Host Room ពី Save Local</button>
 
       <div style="text-align:left; font-size:12px; margin-top:8px;">ចូលរួមលេងតាម Room ID:</div>
@@ -356,7 +355,7 @@
 
       <hr style="border-color:#444; margin:14px 0;">
       
-      <div style="text-align:left; font-size:13px; font-weight:bold; color:#ffca28; margin-bottom:6px;">📋 បញ្ជី Room ដែលធ្លាប់បង្កើត និង Join៖</div>
+      <div style="text-align:left; font-size:13px; font-weight:bold; color:#ffca28; margin-bottom:6px;">📋 បញ្ជី Room ដែលធ្លាប់បង្កើត និង Join (Multiplay):</div>
       <div id="multiplayer-rooms-history" style="max-height: 180px; overflow-y: auto;"></div>
 
       <button class="menu-btn" style="width:100%; background:#d9534f; border:none; margin-top:12px;" id="btn-close-mp">បោះបង់</button>
@@ -367,7 +366,7 @@
   <div class="modal-overlay" id="save-form-modal">
     <div class="modal-box">
       <h3>💾 រក្សាទុក World (Local)</h3>
-      <div style="text-align: left; font-size: 12px; margin-bottom: 2px;">ឈ្មោះ World ថ្មីក្នុង Local៖</div>
+      <div style="text-align: left; font-size: 12px; margin-bottom: 2px;">ឈ្មោះ World ក្នុង Local៖</div>
       <input type="text" id="save-world-name" placeholder="បញ្ចូលឈ្មោះ World...">
       <div style="text-align: left; font-size: 11px; color: #ffca28; margin-bottom: 10px;" id="save-room-id-note">Room ID: ---</div>
       <div style="display:flex; gap:10px;">
@@ -377,10 +376,10 @@
     </div>
   </div>
 
-  <!-- LOAD LIST MODAL POPUP -->
+  <!-- LOAD LIST MODAL POPUP (LOCAL OFFLINE ONLY) -->
   <div class="modal-overlay" id="load-modal">
     <div class="modal-box" style="width:380px;">
-      <h3>📂 បញ្ជី World (Local Storage)</h3>
+      <h3>📂 បញ្ជី World (Local Save - Offline)</h3>
       <div id="save-list-container" style="max-height: 250px; overflow-y: auto; margin: 15px 0;"></div>
       <button class="menu-btn" style="width:100%; background:#777; border:none;" id="btn-close-load">បិទ</button>
     </div>
@@ -389,7 +388,7 @@
   <!-- LOCAL SELECTOR FOR HOSTING MODAL -->
   <div class="modal-overlay" id="host-local-modal">
     <div class="modal-box" style="width:380px;">
-      <h3>💾 ជ្រើសរើស Save Local ដើម្បី Host</h3>
+      <h3>💾 ជ្រើសរើស Save Local เพื่อ Host</h3>
       <div id="host-local-list-container" style="max-height: 250px; overflow-y: auto; margin: 15px 0;"></div>
       <button class="menu-btn" style="width:100%; background:#777; border:none;" id="btn-close-host-local">បោះបង់</button>
     </div>
@@ -436,6 +435,8 @@
       const fullscreenBtn = document.getElementById('fullscreen-btn');
       const toastEl = document.getElementById('toast');
       const crosshairEl = document.getElementById('crosshair');
+
+      let currentLoadedSaveName = ""; // រក្សាទុកឈ្មោះ Save បច្ចុប្បន្ន ដើម្បីងាយស្រួល Auto-Overwrite ពេល Save លើកក្រោយ
 
       const ALL_BLOCKS = [
         { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
@@ -623,6 +624,7 @@
 
       function initDefaultWorld() {
         clearNetworkSession();
+        currentLoadedSaveName = "";
         objects.forEach(obj => scene.remove(obj));
         objects = [];
         const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
@@ -678,7 +680,6 @@
         showToast('🏠 បានចាកចេញពី Room ជោគជ័យ!');
       };
 
-      // --- ROOM HISTORY & MULTIPLAYER LOGIC ---
       function saveRoomToHistory(roomId, isHostRole) {
         let history = JSON.parse(localStorage.getItem('mc_room_history') || '{}');
         history[roomId] = {
@@ -895,7 +896,7 @@
           document.getElementById('room-status-badge').style.display = 'block';
           document.getElementById('room-status-badge').innerText = `👑 ROOM: ${id}`;
           showToast(`✅ បានបង្កើត Room: ${id}`);
-          autoSaveHostWorld(); // Save ភ្លាមៗពេលបង្កើត Room ស្រេច
+          autoSaveHostWorld();
         });
 
         peer.on('connection', (conn) => {
@@ -974,6 +975,7 @@
       function autoSaveJoinedRoom(roomId) {
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
         const saveName = `Room_${roomId}`;
+        currentLoadedSaveName = saveName;
         localSaves[saveName] = {
           saveName: saveName,
           targetRoomId: roomId,
@@ -1069,7 +1071,8 @@
 
       function autoSaveHostWorld() {
         if (!currentRoomId || !isHost) return;
-        const saveName = `Room_${currentRoomId}`;
+        const saveName = currentLoadedSaveName || `Room_${currentRoomId}`;
+        currentLoadedSaveName = saveName;
         const worldData = {
           saveName: saveName,
           targetRoomId: currentRoomId,
@@ -1087,7 +1090,6 @@
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
       }
 
-      // កែសម្រួលបន្ថែម៖ Auto save ពេលទូរស័ព្ទបិទផ្ទាំង ឬប្ដូរ Tab (Mobile Safe Guard)
       window.addEventListener('beforeunload', () => {
         if (isHost && currentRoomId) {
           autoSaveHostWorld();
@@ -1101,6 +1103,7 @@
       });
 
       function saveWorldLocal(saveName) {
+        currentLoadedSaveName = saveName;
         const worldData = {
           saveName: saveName,
           targetRoomId: currentRoomId || saveName,
@@ -1117,7 +1120,7 @@
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
         localSaves[saveName] = worldData;
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
-        showToast('📱 បាន Save ក្នុង Local ជោគជ័យ!');
+        showToast(`📱 បាន Save ក្នុង Local ("${saveName}") ជោគជ័យ!`);
       }
 
       function fetchLocalSaves() {
@@ -1142,7 +1145,7 @@
               <div style="font-size:11px; color:#ffca28;">🔑 Room ID: ${roomIdText}</div>
             </div>
             <div>
-              <button class="btn-load-item" onclick="loadLocalWorldByName('${name}')">លេងបន្ត</button>
+              <button class="btn-load-item" onclick="loadLocalWorldByName('${name}')">លេងបន្ត (Offline)</button>
               <button class="btn-del" onclick="deleteLocalWorldByName('${name}')">លុប</button>
             </div>
           `;
@@ -1155,6 +1158,7 @@
         const data = localSaves[name];
         if (!data) return false;
 
+        currentLoadedSaveName = name; // ចងចាំឈ្មោះ Save នេះស្រាប់ ដើម្បីពេលចុច Save លើកក្រោយកុំឱ្យសួរឈ្មោះទៀត
         objects.forEach(obj => scene.remove(obj));
         objects = [];
         if (data.blocks && Array.isArray(data.blocks)) {
@@ -1173,14 +1177,8 @@
         renderHotbar();
 
         if (startTheGame) {
-          const roomIdToConnect = data.targetRoomId || name;
-          if (data.isOriginalHost) {
-            setupHostRoom(roomIdToConnect);
-            startGame();
-            showToast(`✅ បាន Load World និង Host សារថ្មី: ${roomIdToConnect}`);
-          } else {
-            joinHostRoom(roomIdToConnect);
-          }
+          startGame();
+          showToast(`✅ បាន Load World (Offline Mode): ${name}`);
         }
         return true;
       }
@@ -1191,29 +1189,31 @@
         if (!data) return showToast('⚠️ រកមិនឃើញ World');
 
         document.getElementById('load-modal').style.display = 'none';
-        if (data.isOriginalHost) {
-          loadWorldDataFromSave(name, true);
-        } else {
-          joinHostRoom(data.targetRoomId || name, () => {
-            document.getElementById('load-modal').style.display = 'flex';
-          });
-        }
+        loadWorldDataFromSave(name, true);
       };
 
       window.deleteLocalWorldByName = (name) => {
         if (!confirm(`តើអ្នកប្រាកដថាចង់លុប World "${name}"?`)) return;
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
         delete localSaves[name];
+        if (currentLoadedSaveName === name) currentLoadedSaveName = "";
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
         showToast('🗑️ បានលុបជោគជ័យ!');
         fetchLocalSaves();
       };
 
+      // កែសម្រួលមុខងារ Save Local ឱ្យដឹងថាបើធ្លាប់មានឈ្មោះស្រាប់ មិនបាច់សួរទម្រង់ឈ្មោះទេ (Overwrite ស្វ័យប្រវត្តិ)
       saveBtn.onclick = () => {
-        const noteEl = document.getElementById('save-room-id-note');
-        if (noteEl) noteEl.innerText = `Room ID ចាស់ដែលត្រូវចងភ្ជាប់៖ ${currentRoomId || 'Local-Only'}`;
-        document.getElementById('save-world-name').value = '';
-        document.getElementById('save-form-modal').style.display = 'flex';
+        if (currentLoadedSaveName) {
+          // ប្រសិនបើធ្លាប់ Load ឬ Save រួចម្ដងហើយ ធ្វើការ Save ថับ (Overwrite) លើឈ្មោះដាច់ខាតដោយស្វ័យប្រវត្តិ
+          saveWorldLocal(currentLoadedSaveName);
+        } else {
+          // បើជា World ថ្មីទើបបើក ទើបបង្ហាញ Popup ឱ្យបញ្ចូលឈ្មោះ
+          const noteEl = document.getElementById('save-room-id-note');
+          if (noteEl) noteEl.innerText = `Room ID ចាស់ដែលត្រូវចងភ្ជាប់៖ ${currentRoomId || 'Local-Only'}`;
+          document.getElementById('save-world-name').value = '';
+          document.getElementById('save-form-modal').style.display = 'flex';
+        }
       };
 
       document.getElementById('btn-cancel-save').onclick = () => {
