@@ -96,7 +96,6 @@
       text-align: center;
     }
 
-    /* ប៊ូតុងបញ្ជាលើអេក្រង់ */
     #top-left-controls {
       position: absolute;
       top: 15px; left: 15px;
@@ -114,7 +113,6 @@
     }
     .btn-ui:hover { background: #555; border-color: #fff; transform: scale(1.03); }
 
-    /* Room Badge */
     #room-status-badge {
       position: absolute;
       top: 15px; right: 15px;
@@ -124,7 +122,6 @@
       padding: 6px 12px; z-index: 15; display: none;
     }
 
-    /* ផ្ទាំងព័ត៌មានណែនាំ */
     #info-modal {
       position: absolute;
       top: 60px; left: 15px;
@@ -138,7 +135,6 @@
     }
     #info-modal b { color: #ffca28; }
 
-    /* Hotbar Style */
     #hotbar-container {
       position: absolute;
       bottom: 15px; left: 50%;
@@ -172,7 +168,6 @@
       align-items: center; justify-content: center;
     }
 
-    /* Full Inventory Modal */
     #full-inventory {
       position: absolute;
       top: 50%; left: 50%;
@@ -223,7 +218,6 @@
       display: none; z-index: 130;
     }
 
-    /* MOBILE CONTROLS UI */
     #joystick-zone {
       position: absolute; bottom: 80px; left: 20px;
       width: 100px; height: 100px;
@@ -255,7 +249,6 @@
     }
     .m-btn:active { background: rgba(255, 255, 255, 0.4); }
 
-    /* MODAL POPUPS */
     .modal-overlay {
       display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0,0,0,0.85); z-index: 120; align-items: center; justify-content: center;
@@ -345,8 +338,6 @@
   <div class="modal-overlay" id="multiplayer-modal">
     <div class="modal-box">
       <h3>🌐 ONLINE MULTIPLAYER</h3>
-      <p style="font-size:11px; color:#aaa;">(Save នឹងរក្សាទុកតែលើ Local Storage របស់ Host ប៉ុណ្ណោះ)</p>
-
       <button class="menu-btn" style="width:100%; margin-bottom:10px;" id="btn-create-room">👑 បង្កើត Room ថ្មី (Host)</button>
       <hr style="border-color:#444; margin:12px 0;">
       <div style="text-align:left; font-size:12px;">បញ្ចូល Room ID/ឈ្មោះ ដើម្បីចូលលេងជាមួយ Host:</div>
@@ -360,8 +351,9 @@
   <div class="modal-overlay" id="save-form-modal">
     <div class="modal-box">
       <h3>💾 រក្សាទុក World (Local)</h3>
-      <div style="text-align: left; font-size: 12px; margin-bottom: 2px;">ឈ្មោះ World (ឬ Room ID):</div>
+      <div style="text-align: left; font-size: 12px; margin-bottom: 2px;">ឈ្មោះ World ថ្មីក្នុង Local៖</div>
       <input type="text" id="save-world-name" placeholder="បញ្ចូលឈ្មោះ World...">
+      <div style="text-align: left; font-size: 11px; color: #ffca28; margin-bottom: 10px;" id="save-room-id-note">Room ID: ---</div>
       <div style="display:flex; gap:10px;">
         <button class="menu-btn" style="width:50%; background:#5cb85c; border:none;" id="btn-confirm-save">រក្សាទុក</button>
         <button class="menu-btn" style="width:50%; background:#d9534f; border:none;" id="btn-cancel-save">បោះបង់</button>
@@ -383,7 +375,6 @@
 
   <script>
     window.addEventListener('DOMContentLoaded', () => {
-      // ០. ប្រព័ន្ធចងចាំ និងគ្រប់គ្រងឈ្មោះអ្នកលេង (localStorage)
       let playerName = localStorage.getItem('mc_player_name');
       if (!playerName) {
         playerName = prompt("សូមបញ្ចូលឈ្មោះរបស់អ្នក (Player Name):") || "Player_" + Math.floor(Math.random() * 1000);
@@ -406,7 +397,6 @@
         }
       };
 
-      // UI Elements
       const mainMenuEl = document.getElementById('main-menu');
       const hotbarEl = document.getElementById('hotbar');
       const fullInvModal = document.getElementById('full-inventory');
@@ -449,7 +439,6 @@
       let selectedColor = hotbarItems[0].color;
       let gameStarted = false;
 
-      // Online Multiplayer State & Player Meshes
       let isHost = true;
       let peer = null;
       let connections = [];
@@ -477,7 +466,27 @@
       let keysPressed = {};
       let lastSpaceTime = 0;
 
-      // មុខងារបង្កើត Canvas Text Sprite សម្រាប់បង្ហាញឈ្មោះលើក្បាល
+      // មុខងារចាកចេញ និងសម្អាត Network ទាំងស្រុង
+      function clearNetworkSession() {
+        if (peer && peer.id) {
+          broadcastNetData({ type: 'PLAYER_LEAVE', id: peer.id });
+        }
+        Object.keys(otherPlayers).forEach(id => {
+          if (otherPlayers[id]) scene.remove(otherPlayers[id]);
+        });
+        otherPlayers = {};
+
+        if (peer) {
+          try { peer.destroy(); } catch(e){}
+          peer = null;
+        }
+        connections = [];
+        hostConn = null;
+        currentRoomId = "";
+        const badge = document.getElementById('room-status-badge');
+        if(badge) badge.style.display = 'none';
+      }
+
       function createNameTagSprite(name) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -504,42 +513,35 @@
         return sprite;
       }
 
-      // បង្កើត 3D Model សម្រាប់អ្នកលេងផ្សេងទៀត (ក្បាល, ខ្លួន, ដៃ, Name Tag)
       function createPlayerMesh(name) {
         const group = new THREE.Group();
 
-        // 1. ខ្លួន (Body)
         const bodyGeo = new THREE.BoxGeometry(0.6, 0.9, 0.4);
         const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2233aa });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.45;
         group.add(body);
 
-        // 2. ក្បាល (Head)
         const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
         const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
         const head = new THREE.Mesh(headGeo, headMat);
         head.position.y = 1.15;
         group.add(head);
 
-        // 3. ដៃឆ្វេង (Left Arm)
         const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
         const armMat = new THREE.MeshLambertMaterial({ color: 0x2233aa });
         const leftArm = new THREE.Mesh(armGeo, armMat);
         leftArm.position.set(-0.425, 0.525, 0);
         group.add(leftArm);
 
-        // 4. ដៃស្ដាំ (Right Arm)
         const rightArm = new THREE.Mesh(armGeo, armMat);
         rightArm.position.set(0.425, 0.525, 0);
         group.add(rightArm);
 
-        // 5. បន្ថែម Name Tag នៅលើក្បាល Avatar
         const nameSprite = createNameTagSprite(name || "Player");
         nameSprite.position.set(0, 1.8, 0);
         group.add(nameSprite);
 
-        // រក្សាទុក Target Coordinates សម្រាប់ Interpolation (Smooth Movement)
         group.targetPosition = new THREE.Vector3();
         group.targetYaw = 0;
 
@@ -585,6 +587,7 @@
       const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
 
       function initDefaultWorld() {
+        clearNetworkSession();
         objects.forEach(obj => scene.remove(obj));
         objects = [];
         const defaultMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
@@ -614,7 +617,7 @@
       function showToast(msg) {
         toastEl.innerText = msg;
         toastEl.style.display = 'block';
-        setTimeout(() => { toastEl.style.display = 'none'; }, 2500);
+        setTimeout(() => { toastEl.style.display = 'none'; }, 2800);
       }
 
       function startGame() {
@@ -628,13 +631,14 @@
         showToast('🎮 បានចាប់ផ្ដើមហ្គេមថ្មី!');
       };
 
+      // ពេលចុច Menu គឺធ្វើការ clear network និងចេញក្រៅភ្លាមៗ
       menuBackBtn.onclick = () => {
+        clearNetworkSession();
         gameStarted = false;
         mainMenuEl.style.display = 'flex';
         document.exitPointerLock?.();
       };
 
-      // ONLINE MULTIPLAYER (WEBRTC PEERJS) LOGIC - OPTIMIZED FOR SMOOTHNESS
       document.getElementById('btn-multiplayer').onclick = () => {
         document.getElementById('multiplayer-modal').style.display = 'flex';
       };
@@ -659,6 +663,7 @@
       };
 
       function setupHostRoom(roomId) {
+        clearNetworkSession();
         isHost = true;
         peer = new Peer(roomId, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
@@ -692,27 +697,66 @@
         peer.on('error', () => showToast('⚠️ ID Room នេះមានគេប្រើរួចហើយ!'));
       }
 
-      function joinHostRoom(targetRoomId) {
+      function joinHostRoom(targetRoomId, callbackFailed) {
+        clearNetworkSession();
         isHost = false;
         peer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
 
+        let connectionTimeout = setTimeout(() => {
+          if (!hostConn || !hostConn.open) {
+            showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ មិនអាចលេងបានទេ!');
+            clearNetworkSession();
+            if (callbackFailed) callbackFailed();
+          }
+        }, 5000);
+
         peer.on('open', () => {
-          hostConn = peer.connect(targetRoomId, { reliable: false }); // Reliable false សម្រាប់ចលនារលូនគ្មាន Delay
+          hostConn = peer.connect(targetRoomId, { reliable: false });
 
           hostConn.on('open', () => {
+            clearTimeout(connectionTimeout);
             currentRoomId = targetRoomId;
             document.getElementById('room-status-badge').style.display = 'block';
             document.getElementById('room-status-badge').innerText = `🔗 JOINED: ${targetRoomId}`;
             showToast('✅ បានភ្ជាប់ទៅកាន់ Host ជោគជ័យ!');
             document.getElementById('multiplayer-modal').style.display = 'none';
+
+            // Auto save ឈ្មោះ Room នេះចូលទៅក្នុង Local Save សម្រាប់ Load Game ពេលក្រោយដោយស្វ័យប្រវត្តិ
+            autoSaveJoinedRoom(targetRoomId);
+
             startGame();
           });
 
           hostConn.on('data', (data) => handleNetData(data, hostConn));
-          hostConn.on('close', () => showToast('❌ ដាច់ការភ្ជាប់ពី Host!'));
+          
+          hostConn.on('close', () => {
+            showToast('❌ ម្ចាស់ផ្ទះបានចាកចេញ ឬដាច់ការភ្ជាប់!');
+            clearNetworkSession();
+          });
         });
 
-        peer.on('error', () => showToast('❌ រកមិនឃើញ Room នេះទេ!'));
+        peer.on('error', () => {
+          clearTimeout(connectionTimeout);
+          showToast('⚠️ ម្ចាស់ផ្ទះមិននៅ មិនអាចលេងបានទេ!');
+          clearNetworkSession();
+          if (callbackFailed) callbackFailed();
+        });
+      }
+
+      // Auto save ចូល Local Storage ពេលចូល room គេ
+      function autoSaveJoinedRoom(roomId) {
+        let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
+        const saveName = `Room_${roomId}`;
+        localSaves[saveName] = {
+          saveName: saveName,
+          targetRoomId: roomId,
+          isOriginalHost: false,
+          player: { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw: 0, pitch: 0 },
+          hotbar: hotbarItems.map(item => item.id),
+          activeSlotIndex: activeSlotIndex,
+          blocks: []
+        };
+        localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
       }
 
       function broadcastNetData(data, ignoreConn = null) {
@@ -744,7 +788,6 @@
             otherPlayers[data.id] = playerMesh;
           }
 
-          // កត់ត្រាទីតាំង Target ដើម្បីធ្វើការ Lerp យ៉ាងរលូន
           playerMesh.targetPosition.set(data.x, data.y - playerHeight, data.z);
           playerMesh.targetYaw = data.yaw;
 
@@ -775,15 +818,11 @@
         }
       }
 
-      // LOCAL STORAGE (HOST ONLY)
-      function saveWorldLocal(worldName) {
-        if (!isHost) {
-          showToast('⚠️ មានតែ Host ទេដែលអាច Save បាន!');
-          return;
-        }
-
+      function saveWorldLocal(saveName) {
         const worldData = {
-          worldName: worldName,
+          saveName: saveName,
+          targetRoomId: currentRoomId || saveName,
+          isOriginalHost: isHost,
           player: { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch },
           hotbar: hotbarItems.map(item => item.id),
           activeSlotIndex: activeSlotIndex,
@@ -794,9 +833,9 @@
         };
 
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
-        localSaves[worldName] = worldData;
+        localSaves[saveName] = worldData;
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
-        showToast('📱 បាន Save ក្នុង Local Storage ជោគជ័យ!');
+        showToast('📱 បាន Save ក្នុង Local ជោគជ័យ!');
       }
 
       function fetchLocalSaves() {
@@ -811,15 +850,17 @@
 
         container.innerHTML = '';
         names.forEach(name => {
+          const itemData = localSaves[name];
+          const roomIdText = itemData.targetRoomId ? itemData.targetRoomId : name;
           const item = document.createElement('div');
           item.className = 'save-item';
           item.innerHTML = `
             <div>
               <div style="font-weight:bold; font-size:14px;">${name}</div>
-              <div style="font-size:11px; color:#55aa55;">📱 Local Save</div>
+              <div style="font-size:11px; color:#ffca28;">🔑 Room ID: ${roomIdText}</div>
             </div>
             <div>
-              <button class="btn-load-item" onclick="loadLocalWorldByName('${name}')">🎮 Play / Host</button>
+              <button class="btn-load-item" onclick="loadLocalWorldByName('${name}')">🎮 Play Continue</button>
               <button class="btn-del" onclick="deleteLocalWorldByName('${name}')">🗑️</button>
             </div>
           `;
@@ -832,26 +873,37 @@
         const data = localSaves[name];
         if (!data) return showToast('⚠️ រកមិនឃើញ World');
 
-        objects.forEach(obj => scene.remove(obj));
-        objects = [];
+        const roomIdToConnect = data.targetRoomId || name;
 
-        data.blocks.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+        if (data.isOriginalHost || !data.targetRoomId) {
+          objects.forEach(obj => scene.remove(obj));
+          objects = [];
+          if (data.blocks && Array.isArray(data.blocks)) {
+            data.blocks.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+          }
 
-        if (data.player) {
-          camera.position.set(data.player.posX, data.player.posY, data.player.posZ);
-          yaw = data.player.yaw || 0; pitch = data.player.pitch || 0;
+          if (data.player) {
+            camera.position.set(data.player.posX, data.player.posY, data.player.posZ);
+            yaw = data.player.yaw || 0; pitch = data.player.pitch || 0;
+          }
+
+          if (data.hotbar && Array.isArray(data.hotbar)) {
+            hotbarItems = data.hotbar.map(id => ALL_BLOCKS.find(b => b.id === id) || ALL_BLOCKS[0]);
+          }
+          if (typeof data.activeSlotIndex === 'number') activeSlotIndex = data.activeSlotIndex;
+          renderHotbar();
+
+          setupHostRoom(roomIdToConnect);
+          document.getElementById('load-modal').style.display = 'none';
+          startGame();
+          showToast(`✅ បាន Load ធ្វើជា Host: ${roomIdToConnect}`);
+        } else {
+          showToast(`🔗 កំពុងភ្ជាប់ទៅកាន់ Room: ${roomIdToConnect}...`);
+          document.getElementById('load-modal').style.display = 'none';
+          joinHostRoom(roomIdToConnect, () => {
+            document.getElementById('load-modal').style.display = 'flex';
+          });
         }
-
-        if (data.hotbar && Array.isArray(data.hotbar)) {
-          hotbarItems = data.hotbar.map(id => ALL_BLOCKS.find(b => b.id === id) || ALL_BLOCKS[0]);
-        }
-        if (typeof data.activeSlotIndex === 'number') activeSlotIndex = data.activeSlotIndex;
-        renderHotbar();
-
-        setupHostRoom(name);
-        document.getElementById('load-modal').style.display = 'none';
-        startGame();
-        showToast(`✅ បាន Load: ${name}`);
       };
 
       window.deleteLocalWorldByName = (name) => {
@@ -864,8 +916,9 @@
       };
 
       saveBtn.onclick = () => {
-        if (!isHost) return showToast('⚠️ ការ Save រក្សាទុកតែលើ Local Host ទេ!');
-        document.getElementById('save-world-name').value = currentRoomId;
+        const noteEl = document.getElementById('save-room-id-note');
+        if (noteEl) noteEl.innerText = `Room ID ចាស់ដែលត្រូវចងភ្ជាប់៖ ${currentRoomId || 'Local-Only'}`;
+        document.getElementById('save-world-name').value = '';
         document.getElementById('save-form-modal').style.display = 'flex';
       };
 
@@ -937,7 +990,6 @@
       renderHotbar();
       renderFullInventory();
 
-      // Controls State
       let pitch = 0, yaw = 0;
       let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
       let isLocked = false;
@@ -1326,14 +1378,11 @@
             highlightBox.visible = true;
           } else { highlightBox.visible = false; }
 
-          // ធ្វើឱ្យចលនាអ្នកលេងផ្សេងទៀត Smooth តាមរយៈ Interpolation (Lerp & Rotation Slerp)
           Object.keys(otherPlayers).forEach(id => {
             const playerMesh = otherPlayers[id];
             if (playerMesh && playerMesh.targetPosition) {
-              // Smooth Position (Lerp factor = 0.25)
               playerMesh.position.lerp(playerMesh.targetPosition, 0.25);
 
-              // Smooth Rotation Yaw
               let diffYaw = playerMesh.targetYaw - playerMesh.rotation.y;
               while (diffYaw < -Math.PI) diffYaw += Math.PI * 2;
               while (diffYaw > Math.PI) diffYaw -= Math.PI * 2;
@@ -1341,7 +1390,6 @@
             }
           });
 
-          // ផ្ញើទិន្នន័យទីតាំង, ឈ្មោះ, និងមុំរង្វិលទៅកាន់អ្នកលេងផ្សេងទៀតរៀងរាល់ ~33ms (30Hz rate សម្រាប់ Smooth Network)
           const now = performance.now();
           if (peer && now - lastNetworkSend > 33) {
             const myId = peer.id;
