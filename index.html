@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>3D Minecraft Clone - Keo Rathana</title>
+  <title>ហ្គេមសង់ផ្ទះអ្នកខេត្តមណ្ឌលគិរី - Keo Rathana</title>
   <style>
     * {
       -webkit-touch-callout: none;
@@ -32,7 +32,7 @@
     #main-menu {
       position: absolute;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+      background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('ko.jpg') center/cover no-repeat;
       z-index: 100;
       display: flex;
       flex-direction: column;
@@ -275,7 +275,7 @@
 
   <!-- START MENU -->
   <div id="main-menu">
-    <div class="menu-title">MINECRAFT 3D CLONE</div>
+    <div class="menu-title">ហ្គេមសង់ផ្ទះអ្នកខេត្តមណ្ឌលគិរី</div>
     <div class="player-name-display" id="menu-player-name-display">👤 ឈ្មោះ៖ ...</div>
     <button class="menu-btn" id="btn-change-name">✏️ ប្ដូរឈ្មោះ (Change Name)</button>
     <button class="menu-btn" id="btn-new-game">🎮 ចាប់ផ្ដើមថ្មី (NEW GAME)</button>
@@ -436,7 +436,7 @@
       const toastEl = document.getElementById('toast');
       const crosshairEl = document.getElementById('crosshair');
 
-      let currentLoadedSaveName = ""; // រក្សាទុកឈ្មោះ Save បច្ចុប្បន្ន ដើម្បីងាយស្រួល Auto-Overwrite ពេល Save លើកក្រោយ
+      let currentLoadedSaveName = "";
 
       const ALL_BLOCKS = [
         { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
@@ -1158,7 +1158,7 @@
         const data = localSaves[name];
         if (!data) return false;
 
-        currentLoadedSaveName = name; // ចងចាំឈ្មោះ Save នេះស្រាប់ ដើម្បីពេលចុច Save លើកក្រោយកុំឱ្យសួរឈ្មោះទៀត
+        currentLoadedSaveName = name;
         objects.forEach(obj => scene.remove(obj));
         objects = [];
         if (data.blocks && Array.isArray(data.blocks)) {
@@ -1202,13 +1202,10 @@
         fetchLocalSaves();
       };
 
-      // កែសម្រួលមុខងារ Save Local ឱ្យដឹងថាបើធ្លាប់មានឈ្មោះស្រាប់ មិនបាច់សួរទម្រង់ឈ្មោះទេ (Overwrite ស្វ័យប្រវត្តិ)
       saveBtn.onclick = () => {
         if (currentLoadedSaveName) {
-          // ប្រសិនបើធ្លាប់ Load ឬ Save រួចម្ដងហើយ ធ្វើការ Save ថับ (Overwrite) លើឈ្មោះដាច់ខាតដោយស្វ័យប្រវត្តិ
           saveWorldLocal(currentLoadedSaveName);
         } else {
-          // បើជា World ថ្មីទើបបើក ទើបបង្ហាញ Popup ឱ្យបញ្ចូលឈ្មោះ
           const noteEl = document.getElementById('save-room-id-note');
           if (noteEl) noteEl.innerText = `Room ID ចាស់ដែលត្រូវចងភ្ជាប់៖ ${currentRoomId || 'Local-Only'}`;
           document.getElementById('save-world-name').value = '';
