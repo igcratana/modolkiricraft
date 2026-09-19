@@ -281,6 +281,7 @@
     <button class="menu-btn" id="btn-new-game">🎮 ចាប់ផ្ដើមថ្មី (NEW GAME)</button>
     <button class="menu-btn" id="btn-load-game">📂 លេងបន្ត (LOAD GAME)</button>
     <button class="menu-btn" id="btn-multiplayer">🌐 លេងជាមួយមិត្តភ័ក្ដ (ONLINE)</button>
+    <button class="menu-btn" id="btn-menu-fullscreen" style="background: rgba(60, 60, 60, 0.9); border-color: #ffca28;">⛶ ពង្រីកពេញអេក្រង់ (Fullscreen)</button>
     <div class="menu-copyright">
       Copyright © រក្សាសិទ្ធិគ្រប់យ៉ាងដោយ លោក កែវ រតនា ហៅ ប្រូខួច
     </div>
@@ -306,8 +307,7 @@
     - <b>Double Space:</b> បើក / បិទ របៀបហោះ<br>
     - <b>Shift:</b> អោន / ចុះក្រោម (Fly)<br>
     - <b>ទូរស័ព្ទ (Touch):</b><br>
-    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Break<br>
-    &nbsp;&nbsp;• <b>Double Tap ចំ Crosshair:</b> Copy ពណ៌
+    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Auto Break/Build បន្តបន្ទាប់
   </div>
 
   <div id="hotbar-container">
@@ -433,6 +433,7 @@
       const loadBtn = document.getElementById('load-btn');
       const menuBackBtn = document.getElementById('menu-back-btn');
       const fullscreenBtn = document.getElementById('fullscreen-btn');
+      const menuFullscreenBtn = document.getElementById('btn-menu-fullscreen');
       const toastEl = document.getElementById('toast');
       const crosshairEl = document.getElementById('crosshair');
 
@@ -1076,7 +1077,7 @@
         const worldData = {
           saveName: saveName,
           targetRoomId: currentRoomId,
-          isOriginalHost: true,
+          isOriginalHost: isHost,
           player: { posX: camera.position.x, posY: camera.position.y, posZ: camera.position.z, yaw, pitch },
           hotbar: hotbarItems.map(item => item.id),
           activeSlotIndex: activeSlotIndex,
@@ -1238,15 +1239,41 @@
         document.getElementById('load-modal').style.display = 'none';
       };
 
+      // មុខងារ Fullscreen (ពេញអេក្រង់ទាំងកុំព្យូទ័រ និងទូរស័ព្ទ ប្រៀបដូច YouTube)
       function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => showToast('⚠️ មិនអាចបើក Fullscreen បានទេ'));
-        } else if (document.exitFullscreen) {
-          document.exitFullscreen();
+        const docEl = document.documentElement;
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+        if (!isFullscreen) {
+          if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+          } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+          } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+          }
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+          showToast('⛶ បើកអេក្រង់ពេញ (Fullscreen)');
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+          } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+          }
+          showToast('ទំហំធម្មតា');
         }
       }
 
       fullscreenBtn.onclick = toggleFullscreen;
+      if (menuFullscreenBtn) menuFullscreenBtn.onclick = toggleFullscreen;
 
       helpIconBtn.onclick = () => {
         infoModal.style.display = (infoModal.style.display === 'none' || !infoModal.style.display) ? 'block' : 'none';
@@ -1441,7 +1468,8 @@
       let lastTouchX = 0, lastTouchY = 0;
 
       let touchTimer = null;
-      let isHoldBreak = false;
+      let autoRepeatInterval = null;
+      let isHoldActionTriggered = false;
       let touchStartX = 0, touchStartY = 0;
 
       let lastCrosshairTap = 0;
@@ -1484,11 +1512,19 @@
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
 
-            isHoldBreak = false;
+            isHoldActionTriggered = false;
+            
+            // កំណត់ពេលចុច Hold លើទូរស័ព្ទ៖ បើ hold ឱ្យយូរបន្តិច វានឹងចាប់ផ្ដើម Auto Break បន្តបន្ទាប់ដោយមិនបាច់ដកដៃ
             touchTimer = setTimeout(() => {
-              isHoldBreak = true;
+              isHoldActionTriggered = true;
               performAction('break');
               if (navigator.vibrate) navigator.vibrate(50);
+
+              // ធ្វើការ Auto Repeat Break ម្ដងមួយៗរៀងរាល់ 200ms នៅពេលកំពុង Hold
+              autoRepeatInterval = setInterval(() => {
+                performAction('break');
+                if (navigator.vibrate) navigator.vibrate(30);
+              }, 200);
             }, 400);
           }
         }
@@ -1504,8 +1540,11 @@
             const dx = touch.clientX - lastTouchX;
             const dy = touch.clientY - lastTouchY;
 
+            // បើម្រាមដៃរំកិលច្រើនពេក ចាត់ទុកថាជាការបង្វិលកាមេរ៉ា មិនមែន Hold ទេ
             if (Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) > 15) {
               clearTimeout(touchTimer);
+              clearInterval(autoRepeatInterval);
+              autoRepeatInterval = null;
             }
 
             yaw -= dx * 0.005;
@@ -1532,7 +1571,11 @@
           } else if (touch.identifier === lookTouchId) {
             lookTouchId = null;
             clearTimeout(touchTimer);
-            if (!isHoldBreak && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
+            clearInterval(autoRepeatInterval);
+            autoRepeatInterval = null;
+
+            // បើគ្រាន់តែ Tap (ចុចហើយលែងភ្លាមៗដោយមិន Hold) គឺ Build Block ធម្មតា
+            if (!isHoldActionTriggered && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
               performAction('build');
             }
           }
