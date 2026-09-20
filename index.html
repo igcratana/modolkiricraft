@@ -474,6 +474,18 @@
       let otherPlayers = {};
       let lastNetworkSend = 0;
 
+      // បន្ថែម STUN servers ច្រើន ដើម្បីជួយឱ្យឧបករណ៍នៅឆ្ងាយគ្នា (ភ្នំពេញ ↔ ខេត្ត ឬ Wi-Fi ↔ Mobile Data) ភ្ជាប់គ្នាបានស្រួល
+      const PEER_CONFIG = {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun.stunprotocol.org:3478' }
+          ]
+        }
+      };
+
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87ceeb);
 
@@ -767,7 +779,7 @@
       };
 
       function checkPeerOnline(targetId, callback) {
-        let tempPeer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
+        let tempPeer = new Peer(null, PEER_CONFIG);
         let responded = false;
 
         tempPeer.on('open', () => {
@@ -778,7 +790,7 @@
               try { tempPeer.destroy(); } catch(e){}
               callback(false);
             }
-          }, 2500);
+          }, 3000);
 
           c.on('open', () => {
             if (!responded) {
@@ -890,7 +902,7 @@
         clearNetworkSession();
         isHost = true;
         saveRoomToHistory(roomId, true);
-        peer = new Peer(roomId, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
+        peer = new Peer(roomId, PEER_CONFIG);
 
         peer.on('open', (id) => {
           currentRoomId = id;
@@ -920,8 +932,9 @@
           });
         });
 
-        peer.on('error', () => {
-          showToast('⚠️ ID Room នេះមានគេប្រើរួចហើយ ឬកំពុងដំណើរការ!');
+        peer.on('error', (err) => {
+          console.error(err);
+          showToast('⚠️ ID Room នេះមានគេប្រើរួចហើយ ឬមានបញ្ហាប្រព័ន្ធ Network!');
         });
       }
 
@@ -929,15 +942,15 @@
         clearNetworkSession();
         isHost = false;
         saveRoomToHistory(targetRoomId, false);
-        peer = new Peer(null, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
+        peer = new Peer(null, PEER_CONFIG);
 
         let connectionTimeout = setTimeout(() => {
           if (!hostConn || !hostConn.open) {
-            showToast('⚠️ ម្ចាស់ Room មិនទាន់ Online ឬ Room មិនមាន!');
+            showToast('⚠️ មិនអាចតភ្ជាប់ទៅ Room បានទេ (ពិនិត្យ Network ឬ Room ID)!');
             clearNetworkSession();
             if (callbackFailed) callbackFailed();
           }
-        }, 5000);
+        }, 7000);
 
         peer.on('open', () => {
           hostConn = peer.connect(targetRoomId, { reliable: false });
@@ -965,9 +978,10 @@
           });
         });
 
-        peer.on('error', () => {
+        peer.on('error', (err) => {
+          console.error(err);
           clearTimeout(connectionTimeout);
-          showToast('⚠️ ម្ចាស់ Room មិនទាន់ Online ឬ Room មិនមាន!');
+          showToast('⚠️ ម្ចាស់ Room មិនទាន់ Online ឬមានបញ្ហា Network!');
           clearNetworkSession();
           if (callbackFailed) callbackFailed();
         });
@@ -1239,7 +1253,6 @@
         document.getElementById('load-modal').style.display = 'none';
       };
 
-      // មុខងារ Fullscreen (ពេញអេក្រង់ទាំងកុំព្យូទ័រ និងទូរស័ព្ទ ប្រៀបដូច YouTube)
       function toggleFullscreen() {
         const docEl = document.documentElement;
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
@@ -1514,13 +1527,11 @@
 
             isHoldActionTriggered = false;
             
-            // កំណត់ពេលចុច Hold លើទូរស័ព្ទ៖ បើ hold ឱ្យយូរបន្តិច វានឹងចាប់ផ្ដើម Auto Break បន្តបន្ទាប់ដោយមិនបាច់ដកដៃ
             touchTimer = setTimeout(() => {
               isHoldActionTriggered = true;
               performAction('break');
               if (navigator.vibrate) navigator.vibrate(50);
 
-              // ធ្វើការ Auto Repeat Break ម្ដងមួយៗរៀងរាល់ 200ms នៅពេលកំពុង Hold
               autoRepeatInterval = setInterval(() => {
                 performAction('break');
                 if (navigator.vibrate) navigator.vibrate(30);
@@ -1540,7 +1551,6 @@
             const dx = touch.clientX - lastTouchX;
             const dy = touch.clientY - lastTouchY;
 
-            // បើម្រាមដៃរំកិលច្រើនពេក ចាត់ទុកថាជាការបង្វិលកាមេរ៉ា មិនមែន Hold ទេ
             if (Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) > 15) {
               clearTimeout(touchTimer);
               clearInterval(autoRepeatInterval);
@@ -1574,7 +1584,6 @@
             clearInterval(autoRepeatInterval);
             autoRepeatInterval = null;
 
-            // បើគ្រាន់តែ Tap (ចុចហើយលែងភ្លាមៗដោយមិន Hold) គឺ Build Block ធម្មតា
             if (!isHoldActionTriggered && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
               performAction('build');
             }
@@ -1725,7 +1734,8 @@
           });
 
           const now = performance.now();
-          if (peer && now - lastNetworkSend > 33) {
+          // បង្កើនល្បឿន ឬ កែសម្រួលការបញ្ជូនទិន្នន័យ (Network Packet Frequency ~ 40ms) ដើម្បីកាត់បន្ថយការរអាក់រអួលពេលនៅឆ្ងាយពីគ្នា
+          if (peer && now - lastNetworkSend > 40) {
             const myId = peer.id;
             if (myId) {
               broadcastNetData({
