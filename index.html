@@ -235,15 +235,17 @@
 
     #mobile-action-btns {
       position: absolute; bottom: 80px; right: 20px;
-      display: flex; gap: 10px;
+      display: flex; flex-direction: column; gap: 8px;
       z-index: 12;
     }
 
+    .m-row { display: flex; gap: 8px; justify-content: flex-end; }
+
     .m-btn {
-      width: 55px; height: 55px;
+      width: 50px; height: 50px;
       background: rgba(0, 0, 0, 0.6);
       border: 2px solid #aaa; border-radius: 50%;
-      color: white; font-weight: bold; font-size: 12px;
+      color: white; font-weight: bold; font-size: 11px;
       display: flex; align-items: center; justify-content: center;
       touch-action: manipulation;
     }
@@ -307,7 +309,7 @@
     - <b>Double Space:</b> បើក / បិទ របៀបហោះ<br>
     - <b>Shift:</b> អោន / ចុះក្រោម (Fly)<br>
     - <b>ទូរស័ព្ទ (Touch):</b><br>
-    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Auto Break/Build បន្តបន្ទាប់
+    &nbsp;&nbsp;• <b>Tap:</b> Build | <b>Hold:</b> Auto Break បន្តបន្ទាប់
   </div>
 
   <div id="hotbar-container">
@@ -320,8 +322,14 @@
   </div>
 
   <div id="mobile-action-btns">
-    <div class="m-btn" id="m-btn-jump">⬆ Jump</div>
-    <div class="m-btn" id="m-btn-fly">✈ Fly</div>
+    <div class="m-row">
+      <div class="m-btn" id="m-btn-fly">✈ Fly</div>
+      <div class="m-btn" id="m-btn-jump">⬆ Jump</div>
+    </div>
+    <div class="m-row" id="fly-controls-row" style="display: none;">
+      <div class="m-btn" id="m-btn-up" style="background: rgba(40,167,69,0.7);">➕ ឡើង</div>
+      <div class="m-btn" id="m-btn-down" style="background: rgba(217,83,79,0.7);">➖ ចុះ</div>
+    </div>
   </div>
 
   <div id="full-inventory">
@@ -474,7 +482,6 @@
       let otherPlayers = {};
       let lastNetworkSend = 0;
 
-      // បន្ថែម STUN servers ច្រើន ដើម្បីជួយឱ្យឧបករណ៍នៅឆ្ងាយគ្នា (ភ្នំពេញ ↔ ខេត្ត ឬ Wi-Fi ↔ Mobile Data) ភ្ជាប់គ្នាបានស្រួល
       const PEER_CONFIG = {
         config: {
           iceServers: [
@@ -501,6 +508,8 @@
       let canJump = false;
       let isFlying = false;
       let isCrouching = false;
+      let flyUpAction = false;
+      let flyDownAction = false;
 
       let keysPressed = {};
       let lastSpaceTime = 0;
@@ -1405,6 +1414,7 @@
             if (currentTime - lastSpaceTime < 280) {
               isFlying = !isFlying;
               yVelocity = 0;
+              document.getElementById('fly-controls-row').style.display = isFlying ? 'flex' : 'none';
               if (isCrouching) {
                 isCrouching = false;
                 playerHeight = NORMAL_HEIGHT;
@@ -1527,6 +1537,7 @@
 
             isHoldActionTriggered = false;
             
+            // Hold เพื่อ Break บ្លុកอย่างต่อเนื่อง
             touchTimer = setTimeout(() => {
               isHoldActionTriggered = true;
               performAction('break');
@@ -1584,6 +1595,7 @@
             clearInterval(autoRepeatInterval);
             autoRepeatInterval = null;
 
+            // Tap ธรรมดาเพื่อ Build ប្លុក
             if (!isHoldActionTriggered && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
               performAction('build');
             }
@@ -1611,16 +1623,25 @@
 
       document.getElementById('m-btn-jump').onclick = () => {
         if (!gameStarted) return;
-        if (isFlying) camera.position.y += 1.5;
-        else if (canJump) { yVelocity = JUMP_FORCE; canJump = false; }
+        if (canJump) { yVelocity = JUMP_FORCE; canJump = false; }
       };
 
-      document.getElementById('m-btn-fly').onclick = () => {
+      const flyBtn = document.getElementById('m-btn-fly');
+      flyBtn.onclick = () => {
         if (!gameStarted) return;
         isFlying = !isFlying;
         yVelocity = 0;
+        document.getElementById('fly-controls-row').style.display = isFlying ? 'flex' : 'none';
         showToast(isFlying ? '✈ របៀបហោះ៖ បើក' : '🚶 របៀបដើរ');
       };
+
+      const upBtn = document.getElementById('m-btn-up');
+      upBtn.addEventListener('touchstart', (e) => { e.preventDefault(); flyUpAction = true; });
+      upBtn.addEventListener('touchend', () => { flyUpAction = false; });
+
+      const downBtn = document.getElementById('m-btn-down');
+      downBtn.addEventListener('touchstart', (e) => { e.preventDefault(); flyDownAction = true; });
+      downBtn.addEventListener('touchend', () => { flyDownAction = false; });
 
       window.addEventListener('contextmenu', e => e.preventDefault());
       window.addEventListener('selectstart', e => e.preventDefault());
@@ -1685,15 +1706,16 @@
 
           if (isFlying) {
             const flySpeed = 8.0;
-            if (keysPressed['Space']) camera.position.y += flySpeed * delta;
-            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) camera.position.y -= flySpeed * delta;
+            if (keysPressed['Space'] || flyUpAction) camera.position.y += flySpeed * delta;
+            if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight'] || flyDownAction) camera.position.y -= flySpeed * delta;
 
             const downRay = new THREE.Raycaster(camera.position, new THREE.Vector3(0, -1, 0), 0, playerHeight + 0.1);
             const hits = downRay.intersectObjects(objects);
 
-            if (hits.length > 0) {
+            if (hits.length > 0 && flyDownAction && camera.position.y <= hits[0].point.y + playerHeight + 0.2) {
               camera.position.y = hits[0].point.y + playerHeight;
               isFlying = false;
+              document.getElementById('fly-controls-row').style.display = 'none';
               showToast('🚶 ដល់ដី - ត្រឡប់ទៅរបៀបដើរ');
             }
           } else {
@@ -1734,7 +1756,6 @@
           });
 
           const now = performance.now();
-          // បង្កើនល្បឿន ឬ កែសម្រួលការបញ្ជូនទិន្នន័យ (Network Packet Frequency ~ 40ms) ដើម្បីកាត់បន្ថយការរអាក់រអួលពេលនៅឆ្ងាយពីគ្នា
           if (peer && now - lastNetworkSend > 40) {
             const myId = peer.id;
             if (myId) {
