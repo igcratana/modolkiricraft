@@ -409,6 +409,36 @@
 
   <script>
     window.addEventListener('DOMContentLoaded', () => {
+      // Google Sheets Apps Script Web App URL
+      const SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyviGMUM8pxdoV9F8SI63k5-fS2kk-kzVTyAznPozVNwlnK2tdhEFrnFOWRFr2ozQaMHg/exec";
+
+      function syncToGoogleSheets(roomId, dataObj) {
+        if (!SHEETS_WEB_APP_URL || !roomId) return;
+        
+        // រៀបចំទិន្នន័យសម្រាប់បញ្ជូន (ផ្ញើជា JSON String រួមជាមួយ roomId និង Action)
+        const payload = {
+          roomId: roomId,
+          playerName: playerName,
+          timestamp: new Date().toISOString(),
+          totalBlocks: dataObj.blocks ? dataObj.blocks.length : 0,
+          worldData: JSON.stringify(dataObj)
+        };
+
+        // ប្រើ fetch ដើម្បីបញ្ជូនទិន្នន័យទៅ Google Apps Script (Mode: no-cors ដើម្បីជៀសវាង CORS issues)
+        fetch(SHEETS_WEB_APP_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }).then(() => {
+          console.log("☁️ Data synced to Google Sheets successfully for room:", roomId);
+        }).catch(err => {
+          console.error("⚠️ Failed to sync with Google Sheets:", err);
+        });
+      }
+
       let playerName = localStorage.getItem('mc_player_name');
       if (!playerName) {
         playerName = prompt("សូមបញ្ចូលឈ្មោះរបស់អ្នក (Player Name):") || "Player_" + Math.floor(Math.random() * 1000);
@@ -1135,6 +1165,9 @@
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
         localSaves[saveName] = worldData;
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
+
+        // 🟢 បញ្ជូនទិន្នន័យទៅ Google Sheets ដោយស្វ័យប្រវត្តិ
+        syncToGoogleSheets(currentRoomId, worldData);
       }
 
       window.addEventListener('beforeunload', () => {
@@ -1169,6 +1202,11 @@
         localSaves[saveName] = worldData;
         localStorage.setItem('mc_local_saves', JSON.stringify(localSaves));
         showToast(`📱 បាន Save ក្នុង Local ("${saveName}") ជោគជ័យ!`);
+
+        // 🟢 បញ្ជូនទិន្នន័យទៅ Google Sheets ផងដែរពេល Save
+        if (currentRoomId) {
+          syncToGoogleSheets(currentRoomId, worldData);
+        }
       }
 
       function fetchLocalSaves() {
@@ -1704,7 +1742,6 @@
         moveRight = dx > 10;
       }
 
-      // មុខងារប៊ូតុង Micro-block សម្រាប់ទូរស័ព្ទ
       const microBtn = document.getElementById('m-btn-micro');
       microBtn.onclick = () => {
         if (!gameStarted) return;
