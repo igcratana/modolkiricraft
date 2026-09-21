@@ -303,6 +303,7 @@
 
   <div id="info-modal">
     <b>របៀបបញ្ជា៖</b><br>
+    - <b>ចុច T:</b> ប្ដូរ Mode ប្លុកតូច (Micro-block)<br>
     - <b>លេខ 1-9 & 0 / Mouse Scroll:</b> ប្ដូរ Slot<br>
     - <b>Middle Mouse Click / Double-Tap Crosshair:</b> Copy ពណ៌<br>
     - <b>Space:</b> លោត / ហោះឡើង (Fly)<br>
@@ -396,7 +397,7 @@
   <!-- LOCAL SELECTOR FOR HOSTING MODAL -->
   <div class="modal-overlay" id="host-local-modal">
     <div class="modal-box" style="width:380px;">
-      <h3>💾 ជ្រើសរើស Save Local เพื่อ Host</h3>
+      <h3>💾 ជ្រើសរើស Save Local ដើម្បី Host</h3>
       <div id="host-local-list-container" style="max-height: 250px; overflow-y: auto; margin: 15px 0;"></div>
       <button class="menu-btn" style="width:100%; background:#777; border:none;" id="btn-close-host-local">បោះបង់</button>
     </div>
@@ -446,6 +447,9 @@
       const crosshairEl = document.getElementById('crosshair');
 
       let currentLoadedSaveName = "";
+
+      // ====== MICRO-BLOCK STATE ======
+      let isMicroBlockMode = false;
 
       const ALL_BLOCKS = [
         { id: 0, name: 'ស្មៅ (Grass)', color: 0x55aa55 },
@@ -655,6 +659,7 @@
           for (let z = -8; z < 8; z++) {
             const cube = new THREE.Mesh(blockGeometry, defaultMaterial);
             cube.position.set(x, 0, z);
+            cube.userData = { isMicro: false };
             scene.add(cube);
             objects.push(cube);
           }
@@ -926,7 +931,13 @@
           showToast('👤 មានអ្នកលេងផ្សេងចូលរួម!');
 
           conn.on('open', () => {
-            const worldData = objects.map(o => ({ x: o.position.x, y: o.position.y, z: o.position.z, color: o.material.color.getHex() }));
+            const worldData = objects.map(o => ({ 
+              x: o.position.x, 
+              y: o.position.y, 
+              z: o.position.z, 
+              color: o.material.color.getHex(),
+              isMicro: o.userData.isMicro || false 
+            }));
             conn.send({ type: 'INIT_WORLD', world: worldData });
           });
 
@@ -1024,9 +1035,9 @@
         if (data.type === 'INIT_WORLD') {
           objects.forEach(o => scene.remove(o));
           objects = [];
-          data.world.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+          data.world.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, b.isMicro || false, false));
         } else if (data.type === 'BUILD') {
-          buildBlockAt(data.x, data.y, data.z, data.color, false);
+          buildBlockAt(data.x, data.y, data.z, data.color, data.isMicro || false, false);
           if (isHost) {
             broadcastNetData(data, conn);
             autoSaveHostWorld();
@@ -1066,13 +1077,18 @@
         }
       }
 
-      function buildBlockAt(x, y, z, colorHex, sync = true) {
-        const voxel = new THREE.Mesh(blockGeometry, new THREE.MeshLambertMaterial({ color: colorHex }));
+      function buildBlockAt(x, y, z, colorHex, isMicro = false, sync = true) {
+        let size = isMicro ? 0.5 : 1.0;
+        const geom = new THREE.BoxGeometry(size, size, size);
+        const voxel = new THREE.Mesh(geom, new THREE.MeshLambertMaterial({ color: colorHex }));
         voxel.position.set(x, y, z);
+        voxel.userData = { isMicro: isMicro };
+        
         scene.add(voxel);
         objects.push(voxel);
+
         if (sync) {
-          broadcastNetData({ type: 'BUILD', x, y, z, color: colorHex });
+          broadcastNetData({ type: 'BUILD', x, y, z, color: colorHex, isMicro: isMicro });
           if (isHost) autoSaveHostWorld();
         } else if (isHost && currentRoomId) {
           autoSaveHostWorld();
@@ -1080,7 +1096,12 @@
       }
 
       function breakBlockAt(x, y, z, sync = true) {
-        const target = objects.find(o => o.position.x === x && o.position.y === y && o.position.z === z);
+        const target = objects.find(o => 
+          Math.abs(o.position.x - x) < 0.1 && 
+          Math.abs(o.position.y - y) < 0.1 && 
+          Math.abs(o.position.z - z) < 0.1
+        );
+        
         if (target) {
           scene.remove(target);
           objects.splice(objects.indexOf(target), 1);
@@ -1106,7 +1127,8 @@
           activeSlotIndex: activeSlotIndex,
           blocks: objects.map(o => ({
             x: o.position.x, y: o.position.y, z: o.position.z,
-            color: o.material.color.getHex()
+            color: o.material.color.getHex(),
+            isMicro: o.userData.isMicro || false
           }))
         };
         let localSaves = JSON.parse(localStorage.getItem('mc_local_saves') || '{}');
@@ -1137,7 +1159,8 @@
           activeSlotIndex: activeSlotIndex,
           blocks: objects.map(o => ({
             x: o.position.x, y: o.position.y, z: o.position.z,
-            color: o.material.color.getHex()
+            color: o.material.color.getHex(),
+            isMicro: o.userData.isMicro || false
           }))
         };
 
@@ -1186,7 +1209,7 @@
         objects.forEach(obj => scene.remove(obj));
         objects = [];
         if (data.blocks && Array.isArray(data.blocks)) {
-          data.blocks.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, false));
+          data.blocks.forEach(b => buildBlockAt(b.x, b.y, b.z, b.color, b.isMicro || false, false));
         }
 
         if (data.player) {
@@ -1369,6 +1392,14 @@
 
       document.addEventListener('keydown', (e) => {
         if (!gameStarted) return;
+        
+        if (e.code === 'KeyT') {
+          e.preventDefault();
+          isMicroBlockMode = !isMicroBlockMode;
+          showToast(isMicroBlockMode ? '🧱 បើក Mode ប្លុកតូច (Auto-Corner Micro-block)' : '📦 បើក Mode ប្លុកធម្មតា');
+          return;
+        }
+
         if (e.code === 'CapsLock') {
           e.preventDefault();
           if (isLocked) {
@@ -1462,8 +1493,68 @@
           if (type === 'break') {
             breakBlockAt(intersect.object.position.x, intersect.object.position.y, intersect.object.position.z);
           } else if (type === 'build') {
-            const targetPos = new THREE.Vector3().copy(intersect.object.position).add(intersect.face.normal);
-            buildBlockAt(targetPos.x, targetPos.y, targetPos.z, selectedColor);
+            const targetObj = intersect.object;
+            const isTargetMicro = targetObj.userData.isMicro || false;
+            
+            if (isMicroBlockMode) {
+              // ករណីដាក់ប្លុកតូច (Micro-block)
+              if (isTargetMicro) {
+                // ប្រសិនបើគោលដៅជាប្លុកតូចស្រាប់ ឱ្យសាងសង់តភ្ជាប់គ្នាទៅមុខធម្មតា (ដូចប្លុកធំ)
+                const targetSize = 0.5;
+                const newSize = 0.5;
+                let bx = targetObj.position.x + intersect.face.normal.x * (targetSize / 2 + newSize / 2);
+                let by = targetObj.position.y + intersect.face.normal.y * (targetSize / 2 + newSize / 2);
+                let bz = targetObj.position.z + intersect.face.normal.z * (targetSize / 2 + newSize / 2);
+                buildBlockAt(bx, by, bz, selectedColor, true);
+              } else {
+                // ប្រសិនបើគោលដៅជាប្លុកធំ 1x1 ត្រូវគណនាទីតាំងកូអរដោនេចំ Corner លើផ្ទៃមុខដែល cursor ចង្អុលចំ (Auto Corner Detection)
+                const targetSize = 1.0;
+                const quarter = 0.25;
+                
+                // បំប្លែងจุด point នៃការប៉ះទៅជា local offset ធៀបនឹងកណ្ដាលប្លុកធំ
+                const localPoint = intersect.point.clone().sub(targetObj.position);
+                
+                let ox = 0, oy = 0, oz = 0;
+                const norm = intersect.face.normal;
+
+                if (Math.abs(norm.y) > 0.5) {
+                  // ប៉ះមុខលើ ឬក្រោម: បែងចែកតាមអ័ក្ស X និង Z (ជ្រុងទាំង ៤)
+                  ox = (localPoint.x >= 0) ? quarter : -quarter;
+                  oz = (localPoint.z >= 0) ? quarter : -quarter;
+                  oy = norm.y * (targetSize / 2 + quarter);
+                } else if (Math.abs(norm.x) > 0.5) {
+                  // ប៉ះមុខឆ្វេង ឬស្ដាំ: បែងចែកតាមអ័ក្ស Y និង Z
+                  oy = (localPoint.y >= 0) ? quarter : -quarter;
+                  oz = (localPoint.z >= 0) ? quarter : -quarter;
+                  ox = norm.x * (targetSize / 2 + quarter);
+                } else {
+                  // ប៉ះមុខមុខ ឬក្រោយ: បែងចែកតាមអ័ក្ស X និង Y
+                  ox = (localPoint.x >= 0) ? quarter : -quarter;
+                  oy = (localPoint.y >= 0) ? quarter : -quarter;
+                  oz = norm.z * (targetSize / 2 + quarter);
+                }
+
+                let bx = targetObj.position.x + ox;
+                let by = targetObj.position.y + oy;
+                let bz = targetObj.position.z + oz;
+
+                buildBlockAt(bx, by, bz, selectedColor, true);
+              }
+            } else {
+              // ករណីប្លុកធម្មតាធំ (1.0)
+              const targetSize = isTargetMicro ? 0.5 : 1.0;
+              const newSize = 1.0;
+              
+              let bx = targetObj.position.x + intersect.face.normal.x * ((targetSize / 2) + (newSize / 2));
+              let by = targetObj.position.y + intersect.face.normal.y * ((targetSize / 2) + (newSize / 2));
+              let bz = targetObj.position.z + intersect.face.normal.z * ((targetSize / 2) + (newSize / 2));
+
+              bx = Math.round(bx);
+              by = Math.round(by);
+              bz = Math.round(bz);
+
+              buildBlockAt(bx, by, bz, selectedColor, false);
+            }
           } else if (type === 'copy') {
             const blockColor = intersect.object.material.color.getHex();
             const foundBlock = ALL_BLOCKS.find(b => b.color === blockColor) || { name: 'Block', color: blockColor };
@@ -1537,7 +1628,6 @@
 
             isHoldActionTriggered = false;
             
-            // Hold เพื่อ Break บ្លុកอย่างต่อเนื่อง
             touchTimer = setTimeout(() => {
               isHoldActionTriggered = true;
               performAction('break');
@@ -1595,7 +1685,6 @@
             clearInterval(autoRepeatInterval);
             autoRepeatInterval = null;
 
-            // Tap ธรรมดาเพื่อ Build ប្លុក
             if (!isHoldActionTriggered && Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) < 15) {
               performAction('build');
             }
@@ -1739,7 +1828,11 @@
           raycaster.setFromCamera(mouseCenter, camera);
           const intersects = raycaster.intersectObjects(objects);
           if (intersects.length > 0) {
-            highlightBox.position.copy(intersects[0].object.position);
+            const targetObj = intersects[0].object;
+            const size = targetObj.userData.isMicro ? 0.51 : 1.01;
+            highlightGeo.dispose();
+            highlightBox.geometry = new THREE.BoxGeometry(size, size, size);
+            highlightBox.position.copy(targetObj.position);
             highlightBox.visible = true;
           } else { highlightBox.visible = false; }
 
