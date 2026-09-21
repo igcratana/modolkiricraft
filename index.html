@@ -303,7 +303,7 @@
 
   <div id="info-modal">
     <b>របៀបបញ្ជា៖</b><br>
-    - <b>ចុច T:</b> ប្ដូរ Mode ប្លុកតូច (Micro-block)<br>
+    - <b>ចុច T / ប៊ូតុង Micro៖</b> ប្ដូរ Mode ប្លុកតូច (Micro-block)<br>
     - <b>លេខ 1-9 & 0 / Mouse Scroll:</b> ប្ដូរ Slot<br>
     - <b>Middle Mouse Click / Double-Tap Crosshair:</b> Copy ពណ៌<br>
     - <b>Space:</b> លោត / ហោះឡើង (Fly)<br>
@@ -324,6 +324,7 @@
 
   <div id="mobile-action-btns">
     <div class="m-row">
+      <div class="m-btn" id="m-btn-micro" style="background: rgba(230,198,25,0.7); font-size:10px;">🧱 Micro</div>
       <div class="m-btn" id="m-btn-fly">✈ Fly</div>
       <div class="m-btn" id="m-btn-jump">⬆ Jump</div>
     </div>
@@ -1396,6 +1397,8 @@
         if (e.code === 'KeyT') {
           e.preventDefault();
           isMicroBlockMode = !isMicroBlockMode;
+          const microBtnEl = document.getElementById('m-btn-micro');
+          if (microBtnEl) microBtnEl.style.background = isMicroBlockMode ? 'rgba(40, 167, 69, 0.9)' : 'rgba(230, 198, 25, 0.7)';
           showToast(isMicroBlockMode ? '🧱 បើក Mode ប្លុកតូច (Auto-Corner Micro-block)' : '📦 បើក Mode ប្លុកធម្មតា');
           return;
         }
@@ -1497,9 +1500,7 @@
             const isTargetMicro = targetObj.userData.isMicro || false;
             
             if (isMicroBlockMode) {
-              // ករណីដាក់ប្លុកតូច (Micro-block)
               if (isTargetMicro) {
-                // ប្រសិនបើគោលដៅជាប្លុកតូចស្រាប់ ឱ្យសាងសង់តភ្ជាប់គ្នាទៅមុខធម្មតា (ដូចប្លុកធំ)
                 const targetSize = 0.5;
                 const newSize = 0.5;
                 let bx = targetObj.position.x + intersect.face.normal.x * (targetSize / 2 + newSize / 2);
@@ -1507,28 +1508,22 @@
                 let bz = targetObj.position.z + intersect.face.normal.z * (targetSize / 2 + newSize / 2);
                 buildBlockAt(bx, by, bz, selectedColor, true);
               } else {
-                // ប្រសិនបើគោលដៅជាប្លុកធំ 1x1 ត្រូវគណនាទីតាំងកូអរដោនេចំ Corner លើផ្ទៃមុខដែល cursor ចង្អុលចំ (Auto Corner Detection)
                 const targetSize = 1.0;
                 const quarter = 0.25;
-                
-                // បំប្លែងจุด point នៃការប៉ះទៅជា local offset ធៀបនឹងកណ្ដាលប្លុកធំ
                 const localPoint = intersect.point.clone().sub(targetObj.position);
                 
                 let ox = 0, oy = 0, oz = 0;
                 const norm = intersect.face.normal;
 
                 if (Math.abs(norm.y) > 0.5) {
-                  // ប៉ះមុខលើ ឬក្រោម: បែងចែកតាមអ័ក្ស X និង Z (ជ្រុងទាំង ៤)
                   ox = (localPoint.x >= 0) ? quarter : -quarter;
                   oz = (localPoint.z >= 0) ? quarter : -quarter;
                   oy = norm.y * (targetSize / 2 + quarter);
                 } else if (Math.abs(norm.x) > 0.5) {
-                  // ប៉ះមុខឆ្វេង ឬស្ដាំ: បែងចែកតាមអ័ក្ស Y និង Z
                   oy = (localPoint.y >= 0) ? quarter : -quarter;
                   oz = (localPoint.z >= 0) ? quarter : -quarter;
                   ox = norm.x * (targetSize / 2 + quarter);
                 } else {
-                  // ប៉ះមុខមុខ ឬក្រោយ: បែងចែកតាមអ័ក្ស X និង Y
                   ox = (localPoint.x >= 0) ? quarter : -quarter;
                   oy = (localPoint.y >= 0) ? quarter : -quarter;
                   oz = norm.z * (targetSize / 2 + quarter);
@@ -1541,7 +1536,6 @@
                 buildBlockAt(bx, by, bz, selectedColor, true);
               }
             } else {
-              // ករណីប្លុកធម្មតាធំ (1.0)
               const targetSize = isTargetMicro ? 0.5 : 1.0;
               const newSize = 1.0;
               
@@ -1709,6 +1703,15 @@
         moveLeft = dx < -10;
         moveRight = dx > 10;
       }
+
+      // មុខងារប៊ូតុង Micro-block សម្រាប់ទូរស័ព្ទ
+      const microBtn = document.getElementById('m-btn-micro');
+      microBtn.onclick = () => {
+        if (!gameStarted) return;
+        isMicroBlockMode = !isMicroBlockMode;
+        microBtn.style.background = isMicroBlockMode ? 'rgba(40, 167, 69, 0.9)' : 'rgba(230, 198, 25, 0.7)';
+        showToast(isMicroBlockMode ? '🧱 បើក Mode ប្លុកតូច (Micro-block)' : '📦 បើក Mode ប្លុកធម្មតា');
+      };
 
       document.getElementById('m-btn-jump').onclick = () => {
         if (!gameStarted) return;
